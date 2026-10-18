@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import QuestionPanel, { type Result } from '@/components/QuestionPanel'
 import QImages from '@/components/QImages'
+import TeX from '@/components/TeX'
 import { Corners, LevelText, Sect, Stat, fmtPct, pad2 } from '@/components/ui'
 import { leafOf, leafPath } from '@/lib/bank'
 import { collectProfile } from '@/lib/profile-data'
@@ -169,8 +170,8 @@ function Summary({ s, bank, byId }: { s: Session; bank: Bank; byId: Map<string, 
                 </summary>
                 <div className="flex flex-col" style={{ gap: 10, padding: '0 22px 16px' }}>
                   <div className="blueprint v2-paper"><QImages srcs={q.img.q} alt="題目" /><Corners /></div>
-                  {q.img.a?.length ? <div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}><QImages srcs={q.img.a} alt="答案" /></div> : null}
-                  <div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}><QImages srcs={q.img.s} alt="詳解" /></div>
+                  {q.answerTex ? <div><span className="v2-label">ANSWER 答案 </span><TeX tex={q.answerTex} /></div> : q.img.a?.length ? <div className="v2-paper" style={{ paddingLeft: 0 }}><QImages srcs={q.img.a} alt="答案" /></div> : null}
+                  <div className="v2-paper" style={{ paddingLeft: 0 }}><QImages srcs={q.img.s} alt="詳解" /></div>
                 </div>
               </details>
             )

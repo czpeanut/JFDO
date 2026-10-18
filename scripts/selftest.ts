@@ -8,7 +8,7 @@ import { leafOf, leavesOf, progressOf, questionsByLeaf } from '../lib/bank'
 import { type AnswerEvent, buildLearningProfile } from '../lib/learning-profile'
 import { levelOf, updateStat } from '../lib/mastery'
 import { allocate } from '../lib/plan'
-import { grade, lastAttempts, pickQuestions } from '../lib/practice'
+import { grade, gradeFill, lastAttempts, pickQuestions } from '../lib/practice'
 import type { AttemptLog, Bank, BankQuestion, KPStat } from '../lib/types'
 import { NEVER, dayStart, isDue, recordRight, recordWrong } from '../lib/wrongbook'
 
@@ -30,6 +30,17 @@ ok(emptyLeaves.length === 0, `每個題型都有可練的題目（空的：${emp
 const noAns = bank.questions.filter(q => !q.img.a?.length && !q.img.s?.length)
 ok(noAns.every(q => q.noAnswer), `沒有答案也沒有詳解的題目都標記 noAnswer、不出題（${noAns.map(q => q.id).join('、') || '無'}）`)
 
+// 選填格式完整性
+const fills = bank.questions.filter(q => q.fill)
+const badFill = fills.filter(q => {
+  const keys = q.fill!.parts.flatMap(p => p.key)
+  const nums = q.fill!.parts.flatMap(p => [...p.tex.matchAll(/\\boxed\{\\scriptstyle (\d+)\}/g)].map(m => Number(m[1])))
+  return !keys.length || keys.some(k => !/^[0-9-]$/.test(k)) || nums.length !== keys.length || nums.some((n, i) => n !== i + 1)
+    || q.fill!.parts.some(p => p.groups && p.groups[p.groups.length - 1][1] !== p.key.length)
+})
+ok(fills.length > 500 && badFill.length === 0, `選填 ${fills.length} 題：格子編號連續、答案字元合法（不符 ${badFill.length} 題${badFill.length ? '：' + badFill.slice(0, 3).map(q => q.id).join('、') : ''}）`)
+ok(bank.questions.filter(q => q.kind === 'open' && !q.noAnswer && q.img.a?.length).every(q => q.answerTex), '有答案圖的計算題都有轉寫的答案（answerTex）')
+
 // ── 2. 批改 ──
 const choice = { id: 'c', kind: 'choice', options: 5, answer: [1, 4, 5] } as BankQuestion
 ok(grade(choice, [5, 1, 4]) === true, '多選：順序不同也算對')
@@ -39,6 +50,11 @@ ok(grade(choice, 'skip') === false, '不會＝答錯')
 const tf = { id: 't', kind: 'tf', answer: false } as BankQuestion
 ok(grade(tf, false) === true && grade(tf, true) === false, '是非題')
 ok(grade({ id: 'o', kind: 'open' } as BankQuestion, 'self') === null, '計算題由學生自評')
+const fq = { id: 'f', kind: 'open', fill: { parts: [{ tex: '', key: ['-', '2', '3'] }, { label: '(2)', tex: '', key: ['6', '4'], groups: [[0, 1], [1, 2]] }] } } as unknown as BankQuestion
+ok(grade(fq, ['-', '2', '3', '6', '4']) === true, '選填：每格都對才算對')
+ok(grade(fq, ['-', '2', '3', '4', '6']) === true, '選填：「或」分隔的多個答案不限順序')
+ok(grade(fq, ['2', '2', '3', '6', '4']) === false && grade(fq, ['-', '2', '3', '6']) === false, '選填：錯一格或沒填完都算錯')
+ok(gradeFill({ parts: [{ tex: '', key: ['1', '2'] }] }, ['2', '1']) === false, '選填：沒有標不限順序的，順序要對')
 
 // ── 3. 選題 ──
 const strong: KPStat = { score: 92, attempts: 20, correct: 19, recent: [true, true, true, true, true], last: 1 }

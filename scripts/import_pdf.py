@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """把「單位知識」題庫 PDF（source/*.pdf）轉成 app 用的題庫：
     public/bank/index.json    知識點樹（章 → 節 → 知識點 → 子知識點 → 題型）＋每題的答案、作答方式、圖片路徑
-    public/bank/<章>/<id>-q-1.png   題目（題號到【答案】前）
+    public/bank/<章>/<id>-q-1.png   題目（題號到【答案】前）；圖一律是「文字色＋透明背景」，直接融入頁面底色
                      <id>-a-1.png   答案（【答案】到【詳解】前）
                      <id>-s-1.png   詳解（【詳解】到下一題前）
 
@@ -23,7 +23,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_JSON = ROOT / "public" / "bank" / "index.json"
@@ -180,14 +180,16 @@ def build(pdf: Path) -> dict:
                 cur["sub"]["types"].append(cur["type"])
             no = int(mm.group(1))
             q = {"id": f"{ch_id}_{cur['sub']['id']}_{tid}_{no}", "chapter": ch_id, "section": cur["section"]["id"], "kp": cur["kp"]["id"],
-                 "sub": cur["sub"]["id"], "type": tid, "no": no, "_regions": {}, "_text": {"q": [], "a": [], "s": []}}
+                 "sub": cur["sub"]["id"], "type": tid, "no": no, "_regions": {}, "_labels": [], "_text": {"q": [], "a": [], "s": []}}
             region, region_start = "q", pos
         elif k == "answer" and q is not None:
             close_region(pos)
             region, region_start = "a", pos
+            q["_labels"].append(ln)
         elif k == "solution" and q is not None:
             close_region(pos)
             region, region_start = "s", pos
+            q["_labels"].append(ln)
     finish_question((len(sizes) - 1, page_bottom.get(len(sizes) - 1, sizes[-1][1] - 70)))
 
     # 每題的文字（失真，只用來判斷作答方式與搜尋）
@@ -234,17 +236,25 @@ def render_pages(pdf: Path, tmp: Path) -> list[Path]:
     return sorted(tmp.glob("p-*.png"), key=lambda p: int(p.stem.split("-")[1]))
 
 
-def trim(img: Image.Image) -> Image.Image | None:
-    # 去掉上下與右側空白；左邊保留固定邊界，題目之間對齊（前端以固定比例顯示，字的大小一致）
+def trim(img: Image.Image, left: bool = False) -> Image.Image | None:
+    # 去掉上下與右側空白；左邊預設保留固定邊界，題目之間對齊（前端以固定比例顯示，字的大小一致）；答案圖連左邊也裁
     inv = ImageOps.invert(img.point(lambda v: 255 if v > 235 else v))
     box = inv.getbbox()
     if not box:
         return None
-    _, top, right, bottom = box
-    return img.crop((0, max(0, top - 6), min(img.width, right + 12), min(img.height, bottom + 6)))
+    x0, top, right, bottom = box
+    return img.crop((max(0, x0 - 4) if left else 0, max(0, top - 6), min(img.width, right + 12), min(img.height, bottom + 6)))
 
 
-def crop_region(pages: list[Image.Image], ch: dict, a: tuple[int, float], b: tuple[int, float]) -> list[Image.Image]:
+def mask_labels(pages: list[Image.Image], labels: list[dict]):
+    """把【答案】【詳解】這類標籤塗白：介面上已有自己的標題，圖裡不重複。
+    標籤是 4 個 12pt 全形字（寬 48pt）；不能用行高估算——含分數的行比較高，會連答案一起蓋掉"""
+    for ln in labels:
+        x0, x1 = ln["x"] - 1, ln["x"] + 48.5
+        ImageDraw.Draw(pages[ln["page"]]).rectangle([int(x0 * SCALE), int((ln["y0"] - 1) * SCALE), int(x1 * SCALE), int((ln["y1"] + 1) * SCALE)], fill=255)
+
+
+def crop_region(pages: list[Image.Image], ch: dict, a: tuple[int, float], b: tuple[int, float], left: bool = False) -> list[Image.Image]:
     out = []
     for p in range(a[0], b[0] + 1):
         w, h = ch["_sizes"][p]
@@ -253,16 +263,21 @@ def crop_region(pages: list[Image.Image], ch: dict, a: tuple[int, float], b: tup
         if bottom - top < 6:
             continue
         img = pages[p].crop((int(56 * SCALE), int(top * SCALE), int((w - 48) * SCALE), int(bottom * SCALE)))
-        img = trim(img)
+        img = trim(img, left)
         if img is not None and img.height > 10:
             out.append(img)
     return out
 
 
+INK = (0x1D, 0x1F, 0x20)   # 與介面文字色（--color-text）相同
+
+
 def save(img: Image.Image, path: Path):
+    """存成「文字色＋透明背景」：白色全透明、越深越不透明，放在任何底色上都不會出現白框；16 色調色盤，檔案小"""
     path.parent.mkdir(parents=True, exist_ok=True)
-    # 16 階灰：文字圖檔案小很多、看起來一樣
-    img.point(lambda v: (v // 16) * 17).convert("L").quantize(16).save(path, optimize=True)
+    alpha = img.convert("L").point(lambda v: 0 if v >= 235 else min(255, (235 - v) * 255 // 205))
+    rgba = Image.merge("RGBA", (*(Image.new("L", img.size, c) for c in INK), alpha))
+    rgba.quantize(16, method=Image.Quantize.FASTOCTREE).save(path, optimize=True)
 
 
 def main():
@@ -279,13 +294,14 @@ def main():
                 f.unlink()
         with tempfile.TemporaryDirectory() as tmp:
             pages = [Image.open(p).convert("L") for p in render_pages(pdf, Path(tmp))]
+            mask_labels(pages, [ln for q in ch["_questions"] for ln in q["_labels"]])
             qs = []
             for q in ch["_questions"]:
                 imgs = {}
                 for r in ("q", "a", "s"):
                     if r not in q["_regions"]:
                         continue
-                    parts = crop_region(pages, ch, *q["_regions"][r])
+                    parts = crop_region(pages, ch, *q["_regions"][r], left=(r == "a"))
                     names = []
                     for i, im in enumerate(parts, 1):
                         name = f"{q['id']}-{r}-{i}.png"
@@ -314,6 +330,11 @@ def main():
         for x in qs:
             kinds[x["kind"]] = kinds.get(x["kind"], 0) + 1
         print(f"  收錄 {len(qs)} 題：選擇 {kinds.get('choice', 0)}、是非 {kinds.get('tf', 0)}、其他（看答案自評）{kinds.get('open', 0)}")
+    # 計算／填充題套上學測選填格式（source/answers.tsv，見 scripts/build_fill.py）
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from build_fill import apply as apply_fill
+    st = apply_fill(bank)
+    print(f"  選填 {st['fill']} 題、看答案自評 {st['self'] + st['toolong']} 題" + (f"、⚠ {st['missing']} 題還沒轉寫答案（source/answers.tsv）" if st["missing"] else ""))
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(bank, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"→ {OUT_JSON.relative_to(ROOT)}：{len(bank['chapters'])} 章、{len(bank['questions'])} 題")
