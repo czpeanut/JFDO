@@ -1,27 +1,29 @@
 # 推到 main 就建置靜態網頁並發佈到 GitHub Pages（gh-pages 分支）：https://czpeanut.github.io/JFDO/
+# PR 只跑測試與建置、不發佈：套件更新（Dependabot）弄壞建置時，合併前就會看到紅燈。
 # 靜態網頁沒有伺服器：「問 AI」與整站通行碼不會啟用（要這兩項請部署到 Vercel，見 README）。
 name: Deploy GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
@@ -35,6 +37,7 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /JFDO
           NEXT_PUBLIC_STATIC: '1'
       - name: 發佈到 gh-pages 分支
+        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
