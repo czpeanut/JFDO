@@ -1,11 +1,10 @@
-// 出題分配（純函式）：這一組要從選的知識點各抽幾題。
-// 弱的、剛錯的、沒練過的多出一些；已掌握的少出（但不為零，維持複習）。
-// 題數用 D'Hondt 法依權重分配，單一知識點有上限，也不超過題庫題數。
+// 出題分配（純函式）：這一組要從選的題型各出幾題。
+// 弱的、剛錯的、沒練過的多出一些；已掌握的少出（題數少時可能這一組不出）。
+// 題數用 D'Hondt 法依權重分配，單一題型有上限，也不超過題庫題數。
 
-import { levelForScore } from './mastery'
-import type { DrawTarget, KPStat } from './types'
+import type { KPStat } from './types'
 
-export type PlanInput = { key: string; unit: string; type?: string; available: number; stat?: KPStat }
+export type PlanInput = { key: string; available: number; stat?: KPStat }
 
 export function weightOf(stat: KPStat | undefined): number {
   if (!stat || stat.attempts === 0) return 100 + 25
@@ -34,15 +33,7 @@ export function allocate(n: number, kps: PlanInput[]): Map<string, number> {
   return out
 }
 
-/** 分配結果 → 給 /api/draw 的抽題目標（數學附上建議難度） */
-export function toTargets(kps: PlanInput[], counts: Map<string, number>, withLevel: boolean): DrawTarget[] {
-  return kps.filter(k => (counts.get(k.key) ?? 0) > 0).map(k => ({
-    unit: k.unit, ...(k.type ? { type: k.type } : {}), n: counts.get(k.key)!,
-    ...(withLevel ? { level: levelForScore(k.stat?.score ?? 50) } : {}),
-  }))
-}
-
-/** 同一知識點的題目不要連在一起（交錯練習） */
+/** 同一題型的題目不要連在一起（交錯練習） */
 export function interleave<T>(items: T[], groupOf: (t: T) => string): T[] {
   const groups = new Map<string, T[]>()
   for (const t of items) { const g = groupOf(t); if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(t) }

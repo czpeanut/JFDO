@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { hasGemini } from '@/lib/ai'
-import { poolInfo } from '@/lib/pool'
-import { SOLVE_MODEL } from '@/lib/solve'
+import { TUTOR_MODEL } from '@/lib/tutor'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const pool = poolInfo()
-  return NextResponse.json({ ai: hasGemini(), model: hasGemini() ? SOLVE_MODEL : null, bank: pool })
+  return NextResponse.json({ ai: hasGemini(), model: hasGemini() ? TUTOR_MODEL : null })
 }

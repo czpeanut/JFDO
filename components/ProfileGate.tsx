@@ -24,7 +24,7 @@ export default function ProfileGate({ children }: { children: React.ReactNode })
       <div className="text-center">
         <div className="text-5xl">📚</div>
         <h1 className="mt-2 text-xl font-bold">JFDO 題庫練習</h1>
-        <p className="mt-1 text-sm text-ink-soft">國中段考題庫・知識點進度・錯題本・AI 詳解</p>
+        <p className="mt-1 text-sm text-ink-soft">單位知識題庫・知識點進度・錯題本・詳解</p>
       </div>
       {list.length > 0 && (
         <div className="card divide-y divide-black/5">

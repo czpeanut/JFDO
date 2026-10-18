@@ -4,14 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "prebuild": "node scripts/build-bank.mjs --if-missing",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/selftest.ts",
-    "bank": "node scripts/build-bank.mjs",
-    "sync:check": "bash scripts/check-student-app-sync.sh"
+    "bank": "python3 scripts/import_pdf.py",
+    "fetch": "python3 scripts/fetch_drive.py"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

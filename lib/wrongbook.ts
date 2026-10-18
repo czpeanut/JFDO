@@ -1,7 +1,7 @@
 // 錯題本（純函式）：Leitner 間隔複習。
 // 答錯 → 回第 0 盒，隔天複習；複習答對 → 往上一盒，間隔 1/2/4/7/15 天；第 5 盒答對＝已克服。
 
-import type { Question, WrongItem } from './types'
+import type { Response, WrongItem } from './types'
 
 const DAY = 86400000
 export const INTERVAL_DAYS = [1, 2, 4, 7, 15]
@@ -16,16 +16,16 @@ export function dayStart(t: number, days: number): number {
   return d.getTime() + days * DAY
 }
 
-export function recordWrong(prev: WrongItem | undefined, q: Question, chosen: number, now = Date.now()): WrongItem {
+export function recordWrong(prev: WrongItem | undefined, qid: string, response: Response, now = Date.now()): WrongItem {
   return {
-    q, chosen,
+    ...prev,
+    qid, response,
     wrongCount: (prev?.wrongCount ?? 0) + 1,
     firstWrongAt: prev?.firstWrongAt ?? now,
     lastWrongAt: now,
     box: 0,
     due: dayStart(now, 1),
     mastered: false,
-    ...(prev?.note ? { note: prev.note } : {}),
   }
 }
 

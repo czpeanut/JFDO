@@ -1,86 +1,78 @@
-import type { SubjectKey } from './subjects'
+// ── 題庫（public/bank/index.json，scripts/import_pdf.py 從 source/*.pdf 產生） ──
+export type BankType = { id: string; title: string }
+export type BankSub = { id: string; title: string; types: BankType[] }
+export type BankKP = { id: string; title: string; subs: BankSub[] }
+export type BankSection = { id: string; title: string; kps: BankKP[] }
+export type BankChapter = { id: string; book: string; no: number; title: string; source: string; sections: BankSection[] }
 
-// ── 知識點目錄（data/pool/catalog.json，scripts/build-bank.mjs 產生） ──
-export type CatalogType = { code: string; name: string; n: number }
-export type CatalogUnit = { code: string; title: string; chapter: string; n: number; types?: CatalogType[] }
-/** 一冊：版本 → 單元表。數學、自然各版本題目共用（只差單元名稱）；英語只有 '*' */
-export type CatalogBook = { total: number; pubs: Record<string, CatalogUnit[]> }
-export type SubjectCatalog = { source: string; subject: SubjectKey; books: Record<string, CatalogBook> }
-
-// ── 題目 ──
-export type Question = {
+export type BankQuestion = {
   id: string
-  subject: SubjectKey
-  book: string
-  /** 國文、社會的版本；其他科 '*' */
-  pub: string
-  unit: string
-  unitTitle: string
   chapter: string
-  /** 數學題型代號與名稱 */
-  type?: string
-  typeName?: string
-  /** 1–5，只有數學有 */
-  difficulty: number | null
-  stem: string
-  options: string[]
-  answer: number
-  /** verified＝原卷答案卷；ai＝兩個模型獨立作答一致（約 95% 正確） */
-  answerStatus: 'verified' | 'ai'
-  /** 出處（OLE-QS 授權條件：每題都要顯示，不可拿掉） */
-  cite: string
+  section: string
+  kp: string
+  sub: string
+  type: string
+  /** 原文件的題號 */
+  no: number
+  /** choice＝選項題（自動批改，可能多選）；tf＝是非；open＝計算填充證明（看答案自己對） */
+  kind: 'choice' | 'tf' | 'open'
+  options?: number
+  answer?: number[] | boolean
+  single?: boolean
+  /** 從 PDF 抽出的答案文字（數學式可能失真，只當參考，畫面一律顯示答案圖） */
+  answerText?: string
+  /** 原文件沒附答案也沒附詳解：不出題 */
+  noAnswer?: boolean
+  /** 題目、答案、詳解圖（跨頁會有好幾張） */
+  img: { q: string[]; a?: string[]; s?: string[] }
+  /** 抽出的題目文字（失真，只用來搜尋） */
+  text: string
 }
 
-/** 抽題目標：某單元（數學可再指定題型）抽幾題、偏好難度 */
-export type DrawTarget = { unit: string; type?: string; n: number; level?: 1 | 2 | 3 }
+export type Bank = { chapters: BankChapter[]; questions: BankQuestion[] }
 
 // ── 學習紀錄（存在本機，lib/storage.ts） ──
-/** 知識點練習進度；key 見 lib/kp.ts */
+/** 題型（知識點樹的最末層）的練習進度；key 見 lib/bank.ts 的 leafKey */
 export type KPStat = { score: number; attempts: number; correct: number; recent: boolean[]; last: number }
 
-export type AttemptLog = { qid: string; subject: SubjectKey; kp: string; correct: boolean; at: number; ms: number }
+export type AttemptLog = { qid: string; leaf: string; correct: boolean; at: number; ms: number }
+
+/** 作答內容：選項題＝選的選項；是非＝true/false；看答案自評＝'self'；不會＝'skip' */
+export type Response = number[] | boolean | 'self' | 'skip'
+
+export const ERROR_REASONS = ['觀念不熟', '計算錯誤', '看錯題目', '公式忘記', '完全不會'] as const
+export type ErrorReason = (typeof ERROR_REASONS)[number]
 
 /** 錯題本一題：Leitner 間隔複習（lib/wrongbook.ts） */
 export type WrongItem = {
-  q: Question
-  /** 最近一次選的答案（-1＝跳過） */
-  chosen: number
+  qid: string
+  response: Response
   wrongCount: number
   firstWrongAt: number
   lastWrongAt: number
-  /** 複習盒 0–5：答對一次往上一盒，答錯回 0；到 5 視為已克服 */
+  /** 複習盒 0–5：到期後答對往上一盒，答錯回 0；到 5 視為已克服 */
   box: number
   due: number
   mastered: boolean
+  reason?: ErrorReason
   note?: string
 }
 
-export type SessionItem = { q: Question; chosen: number | null; correct?: boolean; ms?: number }
+export type SessionItem = { qid: string; response?: Response; correct?: boolean; ms?: number }
 export type Session = {
   id: string
   mode: 'practice' | 'review'
-  subject: SubjectKey | null
-  book: string | null
-  pub: string | null
   title: string
   startedAt: number
   endedAt?: number
   index: number
   items: SessionItem[]
-  /** 開始時各知識點掌握度（報告比較前後用） */
+  /** 開始時各題型掌握度（結果頁比較前後用） */
   before: Record<string, number | null>
 }
 
-/** AI 詳解快取（同一題不重複花 AI 費用） */
-export type AskRecord = {
-  qid: string
-  solution: string
-  aiAnswer: string | null
-  mismatch: boolean
-  followups: { q: string; a: string; at: number }[]
-  understood: boolean | null
-  at: number
-}
+/** 問 AI 的紀錄（同一題不重複花 AI 費用） */
+export type AskRecord = { qid: string; turns: { q: string; a: string; at: number }[]; at: number }
 
-/** 學生回報可能有誤的題目（記下 id 交給題庫維護者，不改 OLE-QS） */
-export type FlagItem = { qid: string; reason: string; at: number; auto?: boolean }
+/** 學生回報可能有誤的題目（記下題目 id 交給題庫作者） */
+export type FlagItem = { qid: string; reason: string; at: number }

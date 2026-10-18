@@ -5,7 +5,7 @@ import ProfileGate from '@/components/ProfileGate'
 
 export const metadata: Metadata = {
   title: 'JFDO 題庫練習',
-  description: '國中段考題庫練習：知識點練習進度、依掌握度抽題、錯題本、AI 詳解',
+  description: '單位知識題庫練習：知識點練習進度、依掌握度抽題、錯題本、詳解與問 AI',
   formatDetection: { telephone: false },
 }
 
