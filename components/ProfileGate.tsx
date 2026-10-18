@@ -1,6 +1,7 @@
 'use client'
 
 // 裝置帳號：同一台平板／電腦可以有好幾位學生，每位的進度、錯題分開存（本機 localStorage）。
+// 版型同 student-app v2 的登入畫面（blueprint 框＋四角標記）。
 
 import { useEffect, useState } from 'react'
 import { createProfile, currentProfile, deleteProfile, listProfiles, switchProfile, type Profile } from '@/lib/storage'
@@ -13,38 +14,41 @@ export default function ProfileGate({ children }: { children: React.ReactNode })
 
   useEffect(() => { setMe(currentProfile()); setList(listProfiles()); setReady(true) }, [])
 
-  if (!ready) return null
+  if (!ready) return <div className="v2-root" style={{ minHeight: '100dvh' }} />
   if (me) return <>{children}</>
 
   const pick = (id: string) => { switchProfile(id); setMe(currentProfile()) }
   const add = () => { if (name.trim()) { createProfile(name); setMe(currentProfile()) } }
 
   return (
-    <div className="mx-auto mt-10 max-w-sm space-y-5 px-4">
-      <div className="text-center">
-        <div className="text-5xl">📚</div>
-        <h1 className="mt-2 text-xl font-bold">JFDO 題庫練習</h1>
-        <p className="mt-1 text-sm text-ink-soft">單位知識題庫・知識點進度・錯題本・詳解</p>
-      </div>
-      {list.length > 0 && (
-        <div className="card divide-y divide-black/5">
-          <div className="px-4 py-2 text-xs font-medium text-ink-soft">選擇學生</div>
-          {list.map(p => (
-            <div key={p.id} className="flex items-center gap-2 px-4 py-2.5">
-              <button className="flex-1 text-left font-medium hover:text-brand-600" onClick={() => pick(p.id)}>👤 {p.name}</button>
-              <button className="text-xs text-ink-muted hover:text-red-600"
-                onClick={() => { if (confirm(`刪除「${p.name}」和他所有的練習紀錄？`)) { deleteProfile(p.id); setList(listProfiles()) } }}>刪除</button>
-            </div>
-          ))}
+    <div className="v2-root flex items-center justify-center" style={{ minHeight: '100dvh', padding: '24px 18px' }}>
+      <div className="blueprint" style={{ width: '100%', maxWidth: 380, padding: '34px 26px' }}>
+        <div className="v2-brand" style={{ padding: 0, marginBottom: 8, justifyContent: 'center' }}><span className="mark" />JFDO 題庫練習</div>
+        <p className="v2-muted" style={{ textAlign: 'center', fontSize: 12, marginBottom: 24 }}>單位知識題庫・知識點進度・錯題本・詳解</p>
+
+        {list.length > 0 && (
+          <div style={{ marginBottom: 22 }}>
+            <div className="v2-label" style={{ marginBottom: 6 }}>STUDENTS 選擇學生</div>
+            {list.map(p => (
+              <div key={p.id} className="flex items-center" style={{ gap: 10, padding: '10px 0', borderTop: '1px solid var(--color-divider)' }}>
+                <button className="v2-link" style={{ flex: 1, textAlign: 'left', fontSize: 15, color: 'var(--color-text)' }} onClick={() => pick(p.id)}>{p.name}</button>
+                <button className="v2-mono v2-muted" style={{ background: 'none', border: 0, cursor: 'pointer' }}
+                  onClick={() => { if (confirm(`刪除「${p.name}」和他所有的練習紀錄？`)) { deleteProfile(p.id); setList(listProfiles()) } }}>刪除</button>
+              </div>
+            ))}
+            <div style={{ borderTop: '1px solid var(--color-divider)' }} />
+          </div>
+        )}
+
+        <div className="v2-label" style={{ marginBottom: 6 }}>{list.length ? 'NEW 新增學生' : 'START 第一次使用'}</div>
+        <div className="flex flex-col" style={{ gap: 10 }}>
+          <input value={name} onChange={e => setName(e.target.value)} maxLength={20} placeholder="名字或暱稱"
+            onKeyDown={e => { if (e.key === 'Enter') add() }} className="v2-input" />
+          <button className="v2-btn v2-btn-primary" style={{ width: '100%' }} disabled={!name.trim()} onClick={add}>開始</button>
         </div>
-      )}
-      <div className="card space-y-3 p-4">
-        <div className="text-sm font-medium">{list.length ? '新增學生' : '第一次使用，輸入你的名字'}</div>
-        <input value={name} onChange={e => setName(e.target.value)} maxLength={20} placeholder="名字或暱稱"
-          onKeyDown={e => { if (e.key === 'Enter') add() }}
-          className="w-full rounded-xl border border-black/10 px-3 py-2 outline-none focus:border-brand-500" />
-        <button className="btn-primary w-full" disabled={!name.trim()} onClick={add}>開始</button>
-        <p className="text-xs text-ink-muted">紀錄存在這台裝置的瀏覽器裡；換裝置可到「學習進度」匯出備份。</p>
+        <p className="v2-muted" style={{ fontSize: 11, marginTop: 14, lineHeight: 1.6 }}>紀錄存在這台裝置的瀏覽器裡；換裝置可到「學習進度」匯出備份。</p>
+
+        <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
       </div>
     </div>
   )

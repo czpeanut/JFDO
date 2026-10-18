@@ -64,4 +64,4 @@ npx tsc --noEmit && npx next lint && npm test && npm run build
 | `GEMINI_SOLVE_MODEL` | 問 AI 的模型，預設 `gemini-3.7-flash`（與 student-app 詳解相同） |
 | `SITE_ACCESS_CODE` | 整站通行碼（選用；設了之後裝置要先輸入一次，避免外人用掉 AI 額度） |
 
-技術棧與 student-app、Self-learning-sys 相同：Next.js 14 App Router + TypeScript + Tailwind。`lib/gemini.ts`、`components/SolutionView.tsx`、`components/GeometryFigure.tsx`、`components/MathText.tsx` 是 student-app 的快照。
+版型沿用 student-app v2 分頁的設計系統（`app/industry.css`）。技術棧與 student-app、Self-learning-sys 相同：Next.js 14 App Router + TypeScript + Tailwind。`lib/gemini.ts`、`components/SolutionView.tsx`、`components/GeometryFigure.tsx`、`components/MathText.tsx` 是 student-app 的快照。
