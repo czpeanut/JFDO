@@ -1,0 +1,44 @@
+// 出題分配（純函式）：這一組要從選的題型各出幾題。
+// 弱的、剛錯的、沒練過的多出一些；已掌握的少出（題數少時可能這一組不出）。
+// 題數用 D'Hondt 法依權重分配，單一題型有上限，也不超過題庫題數。
+
+import type { KPStat } from './types'
+
+export type PlanInput = { key: string; available: number; stat?: KPStat }
+
+export function weightOf(stat: KPStat | undefined): number {
+  if (!stat || stat.attempts === 0) return 100 + 25
+  const recentWrong = stat.recent.slice(-5).filter(c => !c).length
+  return Math.max(10, 100 - stat.score) + 15 * recentWrong
+}
+
+export function allocate(n: number, kps: PlanInput[]): Map<string, number> {
+  const out = new Map<string, number>(kps.map(k => [k.key, 0]))
+  const usable = kps.filter(k => k.available > 0)
+  if (!usable.length || n <= 0) return out
+  const cap = Math.max(3, Math.ceil(n / usable.length) + 1)
+  const w = new Map(usable.map(k => [k.key, weightOf(k.stat)]))
+  for (let i = 0; i < n; i++) {
+    let best: PlanInput | null = null
+    let bestQ = -1
+    for (const k of usable) {
+      const c = out.get(k.key)!
+      if (c >= Math.min(cap, k.available)) continue
+      const q = w.get(k.key)! / (c + 1)
+      if (q > bestQ) { bestQ = q; best = k }
+    }
+    if (!best) break
+    out.set(best.key, out.get(best.key)! + 1)
+  }
+  return out
+}
+
+/** 同一題型的題目不要連在一起（交錯練習） */
+export function interleave<T>(items: T[], groupOf: (t: T) => string): T[] {
+  const groups = new Map<string, T[]>()
+  for (const t of items) { const g = groupOf(t); if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(t) }
+  const queues = [...groups.values()].sort((a, b) => b.length - a.length)
+  const out: T[] = []
+  while (queues.some(q => q.length)) for (const q of queues) if (q.length) out.push(q.shift()!)
+  return out
+}
