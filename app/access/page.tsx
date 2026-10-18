@@ -18,15 +18,16 @@ function AccessForm() {
     else setErr('通行碼不對')
   }
   return (
-    <div className="mx-auto mt-10 max-w-sm space-y-4 text-center">
-      <div className="text-5xl">📚</div>
-      <h1 className="text-xl font-bold">JFDO 題庫練習</h1>
-      <p className="text-sm text-ink-soft">這台裝置第一次使用，請輸入通行碼</p>
-      <div className="card space-y-3 p-5">
-        <input type="password" value={code} onChange={e => setCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
-          className="w-full rounded-xl border border-black/10 px-3 py-2 text-center outline-none focus:border-brand-500" autoFocus />
-        {err && <div className="text-sm text-red-600">{err}</div>}
-        <button className="btn-primary w-full" disabled={!code} onClick={submit}>確認</button>
+    <div className="flex items-center justify-center" style={{ padding: '60px 18px' }}>
+      <div className="blueprint" style={{ width: '100%', maxWidth: 360, padding: '30px 24px' }}>
+        <div className="v2-brand" style={{ padding: 0, marginBottom: 8, justifyContent: 'center' }}><span className="mark" />JFDO 題庫練習</div>
+        <p className="v2-muted" style={{ textAlign: 'center', fontSize: 12, marginBottom: 20 }}>這台裝置第一次使用，請輸入通行碼</p>
+        <div className="flex flex-col" style={{ gap: 10 }}>
+          <input type="password" value={code} onChange={e => setCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }} className="v2-input" autoFocus />
+          {err && <div style={{ fontSize: 13, color: 'var(--color-accent-900)' }}>{err}</div>}
+          <button className="v2-btn v2-btn-primary" disabled={!code} onClick={submit}>確認</button>
+        </div>
+        <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
       </div>
     </div>
   )

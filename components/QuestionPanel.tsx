@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AskAI from './AskAI'
 import QImages from './QImages'
+import { Corners } from './ui'
 import { grade } from '@/lib/practice'
 import { addFlag, getWrongBook, saveWrong } from '@/lib/storage'
 import { ERROR_REASONS, type BankQuestion, type Confidence, type ErrorReason, type Response } from '@/lib/types'
@@ -21,9 +22,9 @@ const FAST_MS = 3000
 /** 冷靜作答：題目出現後幾秒才能送出（Meichenbaum & Goodman：重點是檢查步驟，等待只是讓學生有空檢查） */
 const CALM_SECONDS = 5
 const CONF: { c: Confidence; label: string; cls: string }[] = [
-  { c: 'sure', label: '✓ 有把握', cls: 'btn-primary' },
-  { c: 'unsure', label: '？不太確定', cls: 'btn-outline' },
-  { c: 'guess', label: '🎲 用猜的', cls: 'btn-outline' },
+  { c: 'sure', label: '✓ 有把握', cls: 'v2-btn v2-btn-primary' },
+  { c: 'unsure', label: '？不太確定', cls: 'v2-btn' },
+  { c: 'guess', label: '用猜的', cls: 'v2-btn' },
 ]
 
 const fmtResponse = (q: BankQuestion, r: Response) =>
@@ -93,71 +94,83 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  const optBtn = (on: boolean): React.CSSProperties => ({
+    minWidth: 64, padding: '13px 14px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 16,
+    background: on ? 'var(--color-accent)' : '#fff', borderColor: on ? 'var(--color-accent)' : undefined, color: on ? '#fff' : 'inherit',
+  })
+
   return (
-    <div className="space-y-4">
-      <div className="card overflow-x-auto p-4 sm:p-5">
+    <div className="flex flex-col" style={{ gap: 16 }}>
+      <div className="blueprint v2-paper">
         <QImages srcs={q.img.q} alt="題目" />
+        <Corners />
       </div>
 
       {!done && (
-        <div className="card space-y-3 p-4">
+        <div className="flex flex-col" style={{ gap: 12 }}>
           {q.kind === 'choice' && (
             <>
-              <div className="text-sm text-ink-soft">{q.single ? '選一個答案' : '選出所有正確的選項（可能不只一個）'}</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="v2-label">{q.single ? 'PICK ONE 選一個答案' : 'PICK ALL 選出所有正確的選項（可能不只一個）'}</div>
+              <div className="flex flex-wrap" style={{ gap: 14 }}>
                 {Array.from({ length: q.options ?? 0 }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => toggle(n)} aria-pressed={picked.includes(n)}
-                    className={`h-12 w-14 rounded-xl border text-lg font-semibold transition ${picked.includes(n) ? 'border-brand-500 bg-brand-500 text-white' : 'border-black/10 bg-white hover:border-brand-500'}`}>
-                    ({n})
+                  <button key={n} onClick={() => toggle(n)} aria-pressed={picked.includes(n)} className="blueprint" style={optBtn(picked.includes(n))}>
+                    ({n})<Corners />
                   </button>
                 ))}
               </div>
             </>
           )}
           {q.kind === 'tf' && (
-            <div className="flex flex-wrap gap-2">
-              {[true, false].map(v => (
-                <button key={String(v)} onClick={() => setTf(v)} aria-pressed={tf === v}
-                  className={`h-12 w-20 rounded-xl border text-xl transition ${tf === v ? 'border-brand-500 bg-brand-500 text-white' : 'border-black/10 bg-white hover:border-brand-500'}`}>{v ? '○' : '╳'}</button>
-              ))}
-            </div>
+            <>
+              <div className="v2-label">TRUE / FALSE 是非</div>
+              <div className="flex flex-wrap" style={{ gap: 14 }}>
+                {[true, false].map(v => (
+                  <button key={String(v)} onClick={() => setTf(v)} aria-pressed={tf === v} className="blueprint" style={{ ...optBtn(tf === v), minWidth: 84, fontSize: 20 }}>
+                    {v ? '○' : '╳'}<Corners />
+                  </button>
+                ))}
+              </div>
+            </>
           )}
-          {q.kind === 'open' && !revealed && <div className="text-sm text-ink-soft">這題是計算／填充題：先在紙上算出答案，再依你的把握程度按下面的按鈕對答案。</div>}
+          {q.kind === 'open' && !revealed && (
+            <p className="v2-muted" style={{ fontSize: 13 }}>計算／填充題：先在紙上算出答案，再依你的把握程度按下面的按鈕對答案。</p>
+          )}
 
           {revealed ? (
-            <div className="space-y-3">
-              <div className="rounded-xl bg-amber-50/60 p-3">
-                {q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" /> : <div className="text-sm text-ink-soft">這題原文件只附詳解，對照下面的詳解。</div>}
-                {!q.img.a?.length && <QImages srcs={q.img.s} alt="詳解" className="mt-2" />}
+            <div className="flex flex-col" style={{ gap: 12 }}>
+              <div className="v2-label">ANSWER 答案</div>
+              <div className="blueprint v2-paper">
+                {q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" /> : <><div className="v2-muted" style={{ fontSize: 13, marginBottom: 6 }}>這題原文件只附詳解，對照詳解：</div><QImages srcs={q.img.s} alt="詳解" /></>}
+                <Corners />
               </div>
-              <div className="text-sm font-medium">和你算的一樣嗎？</div>
-              <div className="flex flex-wrap gap-2">
-                <button className="btn-primary bg-green-600 hover:bg-green-700" onClick={() => finish('self', revealed.confidence, revealed.ms, true)}>✓ 我答對了</button>
-                <button className="btn-primary bg-red-500 hover:bg-red-600" onClick={() => finish('self', revealed.confidence, revealed.ms, false)}>✗ 我答錯了（含部分錯）</button>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>和你算的一樣嗎？</div>
+              <div className="flex flex-wrap" style={{ gap: 8 }}>
+                <button className="v2-btn v2-btn-primary" style={{ flex: 1 }} onClick={() => finish('self', revealed.confidence, revealed.ms, true)}>✓ 我答對了</button>
+                <button className="v2-btn v2-btn-dark" style={{ flex: 1 }} onClick={() => finish('self', revealed.confidence, revealed.ms, false)}>✗ 我答錯了（含部分錯）</button>
               </div>
             </div>
           ) : (
             <>
               {calm && ready && (
-                <div className="rounded-xl bg-brand-50 px-3 py-2 text-sm">
-                  <div className="font-medium">🧘 冷靜作答：送出前檢查一下{calmWait && `（${CALM_SECONDS - elapsed} 秒）`}</div>
-                  <ol className="mt-1 list-inside list-decimal text-ink-soft">
+                <div className="v2-note">
+                  <div style={{ fontWeight: 600 }}>冷靜作答：送出前檢查一下{calmWait && `（${CALM_SECONDS - elapsed} 秒）`}</div>
+                  <ol style={{ margin: '4px 0 0', paddingLeft: 20 }}>
                     <li>題目問什麼？關鍵字（正負號、範圍、「何者錯誤」）圈了嗎？</li>
                     <li>答案大概多少？和你算的差不多嗎？</li>
                     <li>再對照一次題目，確定沒看錯</li>
                   </ol>
                 </div>
               )}
-              {fastWarn && <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">⏱ 作答很快喔，要不要再看一次題目？確定的話再按一次。</div>}
-              <div className="flex flex-wrap gap-2">
+              {fastWarn && <div className="v2-note is-dark">作答很快喔，要不要再看一次題目？確定的話再按一次。</div>}
+              <div className="flex flex-wrap" style={{ gap: 8 }}>
                 {CONF.map(({ c, label, cls }) => (
-                  <button key={c} className={cls} disabled={!ready || calmWait} onClick={() => trySubmit(c)}>
+                  <button key={c} className={cls} style={{ flex: '1 1 120px' }} disabled={!ready || calmWait} onClick={() => trySubmit(c)}>
                     {q.kind === 'open' ? `${label}，對答案` : label}
                   </button>
                 ))}
-                <button className="btn-ghost" onClick={skip}>不會，看詳解</button>
+                <button className="v2-btn" style={{ flex: '1 1 120px', color: 'rgba(29,31,32,.6)' }} onClick={skip}>不會，看詳解</button>
               </div>
-              {q.kind !== 'open' && <div className="text-xs text-ink-muted">依你的把握程度送出：用猜的答對不太會加分，有把握卻錯會優先複習</div>}
+              {q.kind !== 'open' && <div className="v2-mono v2-muted" style={{ fontSize: 10 }}>依把握程度送出：用猜的答對不太會加分，有把握卻錯會優先複習</div>}
             </>
           )}
         </div>
@@ -171,29 +184,35 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
 function Review({ q, result, onNext, nextLabel }: { q: BankQuestion; result: Result; onNext?: () => void; nextLabel: string }) {
   const ans = answerLabel(q)
   return (
-    <div className="space-y-4">
-      <div className={`card p-4 ${result.correct ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className={`text-lg font-bold ${result.correct ? 'text-green-700' : 'text-red-600'}`}>{result.correct ? '✓ 答對了' : '✗ 答錯了'}</span>
-          {q.kind !== 'open' && <span className="text-sm text-ink-soft">你的答案：{fmtResponse(q, result.response)}</span>}
-          {ans && <span className="text-sm text-ink-soft">正確答案：<b className="text-ink">{ans}</b></span>}
-          {!result.correct && <span className="text-xs text-ink-muted">已收進錯題本，明天會再出現</span>}
-        </div>
-        {q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" className="mt-3" /> : null}
+    <div className="flex flex-col" style={{ gap: 16 }}>
+      <div className={`v2-result ${result.correct ? 'ok' : 'bad'}`} style={{ margin: '0 -22px' }}>
+        <span className="big">{result.correct ? '✓ 答對了' : '✗ 答錯了'}</span>
+        {q.kind !== 'open' && <span style={{ fontSize: 13, opacity: 0.9 }}>你的答案 {fmtResponse(q, result.response)}</span>}
+        {ans && <span style={{ fontSize: 13 }}>正解 <b>{ans}</b></span>}
+        {!result.correct && <span className="v2-mono" style={{ marginLeft: 'auto', opacity: 0.85 }}>已收進錯題本・明天複習</span>}
       </div>
+      {q.img.a?.length ? (
+        <div>
+          <div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div>
+          <div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}><QImages srcs={q.img.a} alt="答案" /></div>
+        </div>
+      ) : null}
 
       {!result.correct && <ErrorNote qid={q.id} />}
 
-      <div className="card space-y-2 p-4">
-        <div className="text-sm font-semibold">📘 詳解</div>
-        {q.img.s?.length ? <QImages srcs={q.img.s} alt="詳解" /> : <div className="text-sm text-ink-muted">原文件沒有附詳解，可以問 AI。</div>}
+      <div>
+        <div className="v2-label" style={{ marginBottom: 6 }}>SOLUTION 詳解</div>
+        <div className="blueprint v2-paper">
+          {q.img.s?.length ? <QImages srcs={q.img.s} alt="詳解" /> : <div className="v2-muted" style={{ fontSize: 13 }}>原文件沒有附詳解，可以問 AI。</div>}
+          <Corners />
+        </div>
       </div>
 
       <AskAI qid={q.id} />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center" style={{ gap: 10, borderTop: '1px solid var(--color-divider)', paddingTop: 14 }}>
         <FlagButton qid={q.id} />
-        {onNext && <button className="btn-primary px-6" onClick={onNext}>{nextLabel} →</button>}
+        {onNext && <button className="v2-btn v2-btn-primary" style={{ marginLeft: 'auto', minWidth: 160 }} onClick={onNext}>{nextLabel} →</button>}
       </div>
     </div>
   )
@@ -209,17 +228,15 @@ function ErrorNote({ qid }: { qid: string }) {
     if (w) saveWrong({ ...w, ...patch })
   }
   return (
-    <div className="card space-y-2 p-4">
-      <div className="text-sm font-semibold">✏️ 錯在哪裡？（記下來，複習時會看到）</div>
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-col" style={{ gap: 8 }}>
+      <div className="v2-label">ERROR CAUSE 錯在哪裡（複習時會看到）</div>
+      <div className="flex flex-wrap" style={{ gap: 6 }}>
         {ERROR_REASONS.map(r => (
-          <button key={r} onClick={() => { setReason(r); save({ reason: r }) }}
-            className={`chip border py-1 ${reason === r ? 'border-brand-500 bg-brand-500 text-white' : 'border-black/10 bg-white text-ink-soft hover:border-brand-500'}`}>{r}</button>
+          <button key={r} onClick={() => { setReason(r); save({ reason: r }) }} className={`v2-tag${reason === r ? ' is-on' : ''}`}>{r}</button>
         ))}
       </div>
       <textarea value={note} onChange={e => setNote(e.target.value)} onBlur={() => save({ note: note.trim() })} maxLength={300} rows={2}
-        placeholder="筆記：例如「忘記 (a+b)³ 的展開」「負號沒變號」"
-        className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" />
+        placeholder="筆記：例如「忘記 (a+b)³ 的展開」「負號沒變號」" className="v2-input" />
     </div>
   )
 }
@@ -227,11 +244,11 @@ function ErrorNote({ qid }: { qid: string }) {
 function FlagButton({ qid }: { qid: string }) {
   const [sent, setSent] = useState(false)
   useEffect(() => setSent(false), [qid])
-  if (sent) return <span className="text-xs text-ink-muted">已記下這題，會轉給題庫作者檢查</span>
+  if (sent) return <span className="v2-mono v2-muted">已記下這題，會轉給題庫作者檢查</span>
   return (
-    <button className="text-xs text-ink-muted underline hover:text-red-600" onClick={() => {
+    <button className="v2-mono v2-muted" style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, textDecoration: 'underline' }} onClick={() => {
       const why = prompt('這題哪裡怪怪的？（例：答案和詳解不一致、圖片切掉了）')
       if (why !== null) { addFlag(qid, why.trim() || '學生回報'); setSent(true) }
-    }}>⚠ 回報題目有誤</button>
+    }}>回報題目有誤</button>
   )
 }

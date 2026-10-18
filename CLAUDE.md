@@ -4,6 +4,7 @@
 
 ## 重點
 - 技術棧：Next.js 14 App Router + TypeScript + Tailwind（與 student-app、Self-learning-sys 一致）
+- 版型：沿用 student-app v2 分頁的設計系統（`app/industry.css`，scope 在 `.v2-root`；桌機指令列、手機身分列＋底部導航、統計格、資料矩陣、blueprint 框、三段式掌握度條）。新畫面用 `v2-*` 類別與 `components/ui.tsx`，Tailwind 只用來排版
 - **一律用中文回覆**
 - 題庫：`source/*.pdf` → `scripts/import_pdf.py`（poppler＋Pillow）→ `public/bank/index.json`＋裁好的題目／答案／詳解圖。題目一律用圖顯示（PDF 數學式抽成文字會失真）；`text`、`answerText` 只能拿來搜尋／參考，不要拿來顯示或批改
 - `public/bank/` 要 commit；改了 `import_pdf.py` 要重跑匯入並跑 `npm test`

@@ -1,7 +1,7 @@
 // 題庫結構與進度彙總（純函式，前後端都能用）。
 // 知識點樹：章 → 節 → 知識點 → 子知識點 → 題型。進度記在最末層「題型」，上層一律由題型彙總。
 
-import { avgScore } from './mastery'
+import { avgScore, levelOf } from './mastery'
 import type { Bank, BankChapter, BankQuestion, KPStat } from './types'
 
 /** 題型鍵：章|子知識點|題型（子知識點代號在章內唯一，例如 A-1） */
@@ -52,14 +52,18 @@ export type Progress = {
   leaves: number
   /** 練過的題型平均掌握度（沒練過＝null） */
   score: number | null
-  /** 彙總成一個 KPStat（給 LevelBadge 用；attempts＝練過的題型數） */
+  /** 彙總成一個 KPStat（給等級標示用） */
   stat?: KPStat
+  /** 各等級的題型數（三段式掌握度條用）：待加強／進步中／已掌握／未練習 */
+  dist: { weak: number; mid: number; good: number; none: number }
 }
 
 /** 彙總一組題型的進度 */
 export function progressOf(leaves: string[], stats: Record<string, KPStat>, byLeaf: Map<string, BankQuestion[]>, doneIds: Set<string>): Progress {
   let total = 0, done = 0, attempts = 0, correct = 0, practiced = 0
+  const dist = { weak: 0, mid: 0, good: 0, none: 0 }
   for (const l of leaves) {
+    dist[levelOf(stats[l]).key]++
     const qs = byLeaf.get(l) ?? []
     total += qs.length
     done += qs.filter(q => doneIds.has(q.id)).length
@@ -68,7 +72,7 @@ export function progressOf(leaves: string[], stats: Record<string, KPStat>, byLe
   }
   const score = avgScore(leaves.map(l => stats[l]))
   return {
-    total, done, attempts, correct, practicedLeaves: practiced, leaves: leaves.length, score,
+    total, done, attempts, correct, practicedLeaves: practiced, leaves: leaves.length, score, dist,
     ...(score != null ? { stat: { score, attempts, correct, recent: [], last: 0 } } : {}),
   }
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import Nav from '@/components/Nav'
+import './industry.css'
+import Shell from '@/components/Nav'
 import ProfileGate from '@/components/ProfileGate'
 
 export const metadata: Metadata = {
@@ -9,15 +10,14 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 }
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#2a78d6' }
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f2f2f3', viewportFit: 'cover' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-TW">
-      <body className="min-h-dvh">
+      <body>
         <ProfileGate>
-          <Nav />
-          <main className="mx-auto max-w-5xl px-4 pb-28 pt-4 sm:pt-6">{children}</main>
+          <Shell>{children}</Shell>
         </ProfileGate>
       </body>
     </html>

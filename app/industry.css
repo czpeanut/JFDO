@@ -1,0 +1,483 @@
+/* ══════════════════════════════════════════════════════════════════════
+   介面主題「Industry」：沿用 czpeanut/student-app 的 app/v2/industry.css（v2 分頁的設計系統），
+   問學姊專用樣式之外逐字複製；JFDO 自己加的元件在檔案最後「JFDO 專用」。
+   來源：Claude Design 專案 fb2cc72b 的 industry.css（設計系統 token）
+
+   ★ 重要：所有規則一律 scope 在 .v2-root 底下。
+     設計系統用了 .card / .btn / .input / .tag 等通用類名，與現有
+     app/globals.css 的同名類別會衝突。加上 .v2-root 前綴後，
+     v2 與現有介面完全隔離，改這個檔案不可能影響舊介面。
+   ══════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+.v2-root {
+  --color-bg:      #f2f2f3;
+  --color-surface: #e9e9ea;
+  --color-text:    #1d1f20;
+  --color-accent:  #5980a6;
+  --color-divider: rgba(29, 31, 32, 0.16);
+  --color-divider-strong: rgba(29, 31, 32, 0.3);
+
+  /* 藍色調階（掌握度三段條也用這組） */
+  --color-accent-100: #eef6ff;
+  --color-accent-300: #b5d9fd;   /* 已掌握 */
+  --color-accent-500: #749dc4;   /* 複習中 */
+  --color-accent-600: #597ea3;
+  --color-accent-700: #416180;
+  --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;   /* 不會 */
+
+  --font-heading: 'Barlow Condensed', 'Noto Sans TC', system-ui, sans-serif;
+  --font-body:    'Barlow', 'Noto Sans TC', system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --space-2: 6.8px;
+  --space-3: 10.2px;
+  --space-4: 13.6px;
+
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.v2-root *,
+.v2-root *::before,
+.v2-root *::after { box-sizing: border-box; }
+
+.v2-root h1, .v2-root h2, .v2-root h3, .v2-root h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.v2-root h1 { font-size: 26px; }
+.v2-root h3 { font-size: 18px; }
+
+/* 等寬微標籤（TODAY'S QUEUE 這類） */
+.v2-root .v2-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-accent-700);
+  text-transform: uppercase;
+}
+.v2-root .v2-mono { font-family: var(--font-mono); font-size: 11px; }
+.v2-root .v2-muted { color: rgba(29, 31, 32, 0.55); }
+
+/* ── blueprint 外框＋四角登記標記 ───────────────────────────── */
+.v2-root .blueprint {
+  position: relative;
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+}
+.v2-root .blueprint > .corner {
+  position: absolute;
+  width: 11px; height: 11px;
+  color: rgba(29, 31, 32, 0.55);
+}
+.v2-root .blueprint > .corner::before,
+.v2-root .blueprint > .corner::after {
+  content: ""; position: absolute; background: currentColor;
+}
+.v2-root .blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+.v2-root .blueprint > .corner::after  { top: 5px; left: 0; width: 100%; height: 1px; }
+.v2-root .blueprint > .corner.tl { top: -6px; left: -6px; }
+.v2-root .blueprint > .corner.tr { top: -6px; right: -6px; }
+.v2-root .blueprint > .corner.bl { bottom: -6px; left: -6px; }
+.v2-root .blueprint > .corner.br { bottom: -6px; right: -6px; }
+
+/* ── 按鈕（一律方角，符合 blueprint 風格）─────────────────── */
+.v2-root .v2-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--font-heading); font-weight: 600; font-size: 15px;
+  line-height: 1.2; cursor: pointer; text-decoration: none;
+  padding: 13px 16px; border-radius: 0;
+  border: 1px solid var(--color-divider);
+  background: transparent; color: var(--color-text);
+  transition: background 0.15s, border-color 0.15s;
+}
+.v2-root .v2-btn:hover { background: rgba(29, 31, 32, 0.07); }
+.v2-root .v2-btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.v2-root .v2-btn-primary:hover { background: var(--color-accent-600); }
+.v2-root .v2-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── 科目標籤 ──────────────────────────────────────────────── */
+.v2-root .v2-chip {
+  display: inline-flex; align-items: center;
+  background: var(--color-accent); color: #fff;
+  padding: 1px 8px; font-size: 11px; border-radius: 0;
+}
+
+/* ── 掌握度三段條 ──────────────────────────────────────────── */
+.v2-root .v2-bar { display: flex; gap: 1px; }
+.v2-root .v2-bar > .seg-unknown  { background: var(--color-accent-900); }
+.v2-root .v2-bar > .seg-review   { background: var(--color-accent-500); }
+.v2-root .v2-bar > .seg-mastered { background: var(--color-accent-300); }
+.v2-root .v2-bar > .seg-empty    { background: rgba(29, 31, 32, 0.12); }
+
+/* ── 列表列（五科掌握）──────────────────────────────────────── */
+.v2-root .v2-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 46px 40px;
+  gap: 10px; align-items: center;
+  padding: 11px 18px;
+  border-top: 1px solid var(--color-divider);
+  text-align: left; width: 100%;
+  background: transparent; color: inherit;
+  font-family: inherit; font-size: inherit;
+}
+.v2-root .v2-row:hover { background: rgba(29, 31, 32, 0.04); }
+.v2-root .v2-row.is-top { background: var(--color-accent-100); }
+
+/* ── 底部導航 ──────────────────────────────────────────────── */
+.v2-root .v2-nav {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  align-items: center; text-align: center; font-size: 11px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-bg);
+}
+.v2-root .v2-nav a {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 0; color: rgba(29, 31, 32, 0.55); text-decoration: none;
+}
+.v2-root .v2-nav a.is-active { color: var(--color-accent-800); }
+.v2-root .v2-nav a .tick {
+  height: 2px; width: 22px; margin: 0 auto; background: transparent;
+}
+.v2-root .v2-nav a.is-active .tick { background: var(--color-accent); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   動作語言
+   沿用現有介面的緩動曲線 cubic-bezier(0.32,0.72,0,1)（iOS 風：先快後緩），
+   再加上設計稿本身的 blueprint 動作：圖框由扁展開、長條由左橫掃、角標繪入。
+   ══════════════════════════════════════════════════════════════════════ */
+
+@keyframes v2PageIn { from { opacity: 0; transform: translateY(10px) scale(0.994); }
+                      to   { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes v2Rise   { from { opacity: 0; transform: translateY(12px); }
+                      to   { opacity: 1; transform: translateY(0); } }
+@keyframes v2Frame  { from { transform: scaleY(0.035); }
+                      to   { transform: scaleY(1); } }
+@keyframes v2Sweep  { from { transform: scaleX(0); }
+                      to   { transform: scaleX(1); } }
+@keyframes v2Mark   { from { transform: scale(0); }
+                      to   { transform: scale(1); } }
+@keyframes v2Fade   { from { opacity: 0; } to { opacity: 1; } }
+
+/* 頁面進場 */
+.v2-root .v2-enter { animation: v2PageIn 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
+
+/* 子元素依序上滑（對應舊介面的 .stagger-children）*/
+.v2-root .v2-stagger > * {
+  animation: v2Rise 0.5s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.v2-root .v2-stagger > *:nth-child(1)   { animation-delay: 0.03s; }
+.v2-root .v2-stagger > *:nth-child(2)   { animation-delay: 0.07s; }
+.v2-root .v2-stagger > *:nth-child(3)   { animation-delay: 0.11s; }
+.v2-root .v2-stagger > *:nth-child(4)   { animation-delay: 0.15s; }
+.v2-root .v2-stagger > *:nth-child(5)   { animation-delay: 0.19s; }
+.v2-root .v2-stagger > *:nth-child(6)   { animation-delay: 0.23s; }
+.v2-root .v2-stagger > *:nth-child(7)   { animation-delay: 0.27s; }
+.v2-root .v2-stagger > *:nth-child(8)   { animation-delay: 0.31s; }
+.v2-root .v2-stagger > *:nth-child(n+9) { animation-delay: 0.35s; }
+
+/* blueprint 圖框：由扁展開（設計稿的 dcFrame）＋四角標記繪入 */
+.v2-root .blueprint {
+  animation: v2Frame 0.34s cubic-bezier(0.16, 0.84, 0.3, 1) backwards;
+  transform-origin: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.v2-root .blueprint > .corner {
+  animation: v2Mark 0.3s cubic-bezier(0.16, 0.84, 0.3, 1) backwards;
+  animation-delay: 0.3s;
+}
+.v2-root .blueprint:hover { border-color: var(--color-accent); }
+
+/* 掌握度長條：由左橫掃展開 */
+.v2-root .v2-bar > * {
+  animation: v2Sweep 0.45s cubic-bezier(0.16, 0.84, 0.3, 1) backwards;
+  transform-origin: left center;
+  animation-delay: 0.12s;
+}
+
+/* 列表列：進場淡入、hover 帶左側藍邊（扁平風不用浮起）*/
+.v2-root .v2-row {
+  animation: v2Fade 0.4s ease-out backwards;
+  box-shadow: inset 2px 0 0 transparent;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.v2-root .v2-row:hover { box-shadow: inset 2px 0 0 var(--color-accent); }
+
+/* 按鈕按壓回饋 */
+.v2-root .v2-btn { transition: background 0.15s, border-color 0.15s, transform 0.12s; }
+.v2-root .v2-btn:active { transform: scale(0.985); }
+
+/* 尊重「減少動態」的系統設定 */
+@media (prefers-reduced-motion: reduce) {
+  .v2-root .v2-enter, .v2-root .v2-stagger > *, .v2-root .blueprint,
+  .v2-root .blueprint > .corner, .v2-root .v2-bar > *, .v2-root .v2-row {
+    animation: none !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   桌機版：指令列 ＋ 資料矩陣（設計稿 1440×900 版面）
+   手機維持單欄任務流（設計稿 390×844 版面）。
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 指令列（桌機才顯示）───────────────────────────────────── */
+.v2-root .v2-cmdbar { display: none; }
+@media (min-width: 900px) {
+  .v2-root .v2-cmdbar {
+    display: flex; align-items: stretch; height: 58px; flex-shrink: 0;
+    border-bottom: 1px solid var(--color-divider);
+    background: var(--color-bg);
+  }
+  .v2-root .v2-mobile-header { display: none; }
+  .v2-root .v2-nav { display: none; }          /* 桌機不要底部導航 */
+}
+.v2-root .v2-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 22px; font-family: var(--font-heading);
+  font-size: 19px; font-weight: 600; white-space: nowrap;
+}
+.v2-root .v2-brand .mark {
+  width: 13px; height: 13px; background: var(--color-accent); flex-shrink: 0;
+}
+.v2-root .v2-tab {
+  display: flex; align-items: center; padding: 0 22px;
+  font-size: 15px; color: rgba(29, 31, 32, 0.62);
+  text-decoration: none; border-bottom: 2px solid transparent;
+  transition: color 0.15s, background 0.15s;
+}
+.v2-root .v2-tab:hover { color: var(--color-text); background: rgba(29, 31, 32, 0.04); }
+.v2-root .v2-tab.is-active {
+  color: var(--color-text); background: #fff;
+  border-bottom-color: var(--color-accent);
+}
+
+/* ── 情境列（分校／班級／週次／連續天數）──────────────────── */
+.v2-root .v2-ctx {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 22px; font-size: 12px;
+  border-bottom: 1px solid var(--color-divider);
+  color: rgba(29, 31, 32, 0.62);
+}
+.v2-root .v2-ctx .sep { color: rgba(29, 31, 32, 0.28); }
+
+/* ── 統計格（大數字＋中英標籤）────────────────────────────── */
+.v2-root .v2-stats {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  border-bottom: 1px solid var(--color-divider);
+}
+@media (min-width: 900px) {
+  .v2-root .v2-stats { grid-template-columns: repeat(4, 1fr) 1.4fr; }
+}
+.v2-root .v2-stat {
+  padding: 16px 22px;
+  border-right: 1px solid var(--color-divider);
+  border-top: 1px solid var(--color-divider);
+}
+@media (min-width: 900px) { .v2-root .v2-stat { border-top: 0; } }
+.v2-root .v2-stat:last-child { border-right: 0; }
+.v2-root .v2-stat .num {
+  font-family: var(--font-heading); font-size: 40px; line-height: 1;
+}
+.v2-root .v2-stat .num span { font-size: 20px; }
+.v2-root .v2-stat .cap {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
+  color: rgba(29, 31, 32, 0.55); margin-top: 5px; text-transform: uppercase;
+}
+
+/* ── 資料矩陣（表格）──────────────────────────────────────── */
+.v2-root .v2-matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
+.v2-root .v2-matrix th {
+  text-align: left; font-family: var(--font-mono); font-weight: 400;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(29, 31, 32, 0.55);
+  padding: 8px 12px; border-bottom: 1px solid var(--color-divider);
+  white-space: nowrap;
+}
+.v2-root .v2-matrix td {
+  padding: 12px; border-bottom: 1px solid var(--color-divider);
+  vertical-align: middle;
+}
+.v2-root .v2-matrix tbody tr:hover { background: rgba(29, 31, 32, 0.03); }
+.v2-root .v2-matrix tbody tr.is-top { background: var(--color-accent-100); }
+.v2-root .v2-matrix .num { font-family: var(--font-mono); font-size: 13px; }
+
+/* ── 桌機雙欄：左資料矩陣、右今日佇列 ─────────────────────── */
+.v2-root .v2-cols { display: block; }
+@media (min-width: 900px) {
+  .v2-root .v2-cols {
+    display: grid; grid-template-columns: 1.35fr 1fr; align-items: start;
+  }
+  .v2-root .v2-cols > * + * { border-left: 1px solid var(--color-divider); }
+}
+
+/* 桌機才顯示 / 手機才顯示 */
+.v2-root .desk-only { display: none; }
+@media (min-width: 900px) {
+  .v2-root .desk-only { display: revert; }
+  .v2-root .mob-only  { display: none; }
+}
+
+/* 尚未做桌機專屬版面的頁面：桌機時收成置中單欄，避免手機版面被拉寬變形。
+   （待各頁補上設計稿的桌機版後即可移除）*/
+@media (min-width: 900px) {
+  .v2-root .v2-narrow { max-width: 760px; margin: 0 auto; }
+}
+
+/* ── 桌機多欄版面（各頁專用）──────────────────────────────── */
+.v2-root .v2-2col, .v2-root .v2-3col { display: block; }
+@media (min-width: 900px) {
+  .v2-root .v2-2col {
+    display: grid; grid-template-columns: 1.25fr 1fr; align-items: start;
+  }
+  .v2-root .v2-3col {
+    display: grid; grid-template-columns: 250px 1.35fr 1fr; align-items: start;
+  }
+  .v2-root .v2-2col > * + *, .v2-root .v2-3col > * + * {
+    border-left: 1px solid var(--color-divider);
+  }
+  /* 分析頁的四格統計 */
+  .v2-root .v2-stats.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  /* 管理端：左窄（表單）右寬（班級與帳號目錄）*/
+  .v2-root .v2-cols.admin { grid-template-columns: 380px 1fr; }
+}
+
+/* ── 步驟列（拍照記錄）────────────────────────────────────── */
+.v2-root .v2-steps {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 10px 22px; font-size: 13px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.v2-root .v2-steps .step { display: flex; align-items: center; gap: 8px; color: rgba(29,31,32,.45); }
+.v2-root .v2-steps .step.is-done { color: rgba(29,31,32,.7); }
+.v2-root .v2-steps .step.is-now  { color: var(--color-text); }
+.v2-root .v2-steps .step .n {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px;
+  border: 1px solid var(--color-divider-strong);
+}
+.v2-root .v2-steps .step.is-now .n,
+.v2-root .v2-steps .step.is-done .n {
+  background: var(--color-accent); border-color: var(--color-accent); color: #fff;
+}
+
+/* ── 篩選列（錯題本）──────────────────────────────────────── */
+.v2-root .v2-filterbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 22px; border-bottom: 1px solid var(--color-divider);
+  font-size: 12px;
+}
+.v2-root .v2-filterbar .grp { color: rgba(29,31,32,.5); margin-right: 2px; }
+
+/* ── 區段標題（KICKER ＋ 標題）───────────────────────────── */
+.v2-root .v2-sect { padding: 18px 22px 10px; }
+.v2-root .v2-sect h1, .v2-root .v2-sect h2 { font-size: 24px; }
+
+/* 數字編號（01 / 02 …）*/
+.v2-root .v2-idx {
+  font-family: var(--font-mono); font-size: 11px; color: rgba(29,31,32,.5);
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   JFDO 專用（同一套 token 延伸）
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 統計格：手機占滿整列（例如掌握分布），桌機照常 */
+.v2-root .v2-stat.wide { grid-column: 1 / -1; }
+@media (min-width: 900px) { .v2-root .v2-stat.wide { grid-column: auto; } }
+
+/* 小按鈕、選中狀態 */
+.v2-root .v2-btn-sm { padding: 8px 12px; font-size: 14px; }
+.v2-root .v2-btn.is-on { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.v2-root .v2-btn-dark { background: var(--color-accent-900); border-color: var(--color-accent-900); color: #fff; }
+.v2-root .v2-btn-dark:hover { background: var(--color-accent-800); }
+.v2-root a.v2-link, .v2-root button.v2-link {
+  color: var(--color-accent-700); background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; text-decoration: none;
+}
+.v2-root .v2-link:hover { text-decoration: underline; }
+.v2-root .v2-link.v2-mono { font-family: var(--font-mono); font-size: 11px; }
+
+/* 外框標籤（科目、錯因…）*/
+.v2-root .v2-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--color-divider); padding: 1px 8px; font-size: 11px;
+  background: transparent; color: inherit; border-radius: 0; white-space: nowrap;
+}
+.v2-root button.v2-tag { cursor: pointer; font-family: inherit; padding: 4px 10px; font-size: 12px; }
+.v2-root button.v2-tag:hover { border-color: var(--color-accent); }
+.v2-root .v2-tag.is-on { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+
+/* 表單 */
+.v2-root .v2-input {
+  width: 100%; font: inherit; font-size: 14px; padding: 10px 12px; color: var(--color-text);
+  border: 1px solid var(--color-divider-strong); background: #fff; border-radius: 0; outline: none;
+}
+.v2-root .v2-input:focus { border-color: var(--color-accent); }
+.v2-root select.v2-input { width: auto; padding: 7px 10px; font-size: 13px; }
+
+/* 區塊分隔（全寬、上下細線）*/
+.v2-root .v2-block { border-top: 1px solid var(--color-divider); padding: 16px 22px; }
+.v2-root .v2-block:last-child { border-bottom: 1px solid var(--color-divider); }
+
+/* 提示列（資訊／警示）*/
+.v2-root .v2-note {
+  border-left: 2px solid var(--color-accent); background: var(--color-accent-100);
+  padding: 10px 14px; font-size: 13px; line-height: 1.6;
+}
+.v2-root .v2-note.is-dark { border-left-color: var(--color-accent-900); background: #e6e9ee; }
+
+/* 結果列：答對＝主色、答錯＝深色（同 student-app v2 演練頁）*/
+.v2-root .v2-result { padding: 14px 22px; color: #fff; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.v2-root .v2-result.ok { background: var(--color-accent); }
+.v2-root .v2-result.bad { background: var(--color-accent-900); }
+.v2-root .v2-result .big { font-family: var(--font-heading); font-size: 26px; font-weight: 600; line-height: 1; }
+
+/* 題目圖：白底紙張 */
+.v2-root .v2-paper { background: #fff; padding: 16px 18px; overflow-x: auto; }
+
+/* 方形勾選框 */
+.v2-root .v2-check {
+  width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--color-divider-strong); background: #fff; font-size: 11px; color: #fff; cursor: pointer; padding: 0;
+}
+.v2-root .v2-check.is-on { background: var(--color-accent); border-color: var(--color-accent); }
+.v2-root .v2-check.is-partial { background: var(--color-accent-300); border-color: var(--color-accent-500); color: var(--color-accent-900); }
+
+/* 底部動作列（選好範圍後開始練習；手機在底部導航上方）*/
+.v2-root .v2-actionbar {
+  position: fixed; left: 0; right: 0; bottom: var(--bottom-nav-h, 0px); z-index: 35;
+  border-top: 1px solid var(--color-divider-strong); background: var(--color-bg);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 22px;
+}
+
+/* 知識點樹的層級列：桌機一行；手機標題一行、進度一行（縮排依 --depth） */
+.v2-root .v2-tree-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 22px 10px calc(22px + var(--depth, 0) * 10px); border-top: 1px solid var(--color-divider);
+}
+@media (min-width: 900px) {
+  .v2-root .v2-tree-row { padding-left: calc(22px + var(--depth, 0) * 18px); }
+}
+.v2-root .v2-tree-row .cells { display: flex; align-items: center; gap: 10px; flex: 1 1 280px; max-width: 380px; margin-left: auto; }
+.v2-root .v2-tree-row:hover { background: rgba(29, 31, 32, 0.03); }
+.v2-root button.v2-tree-row { width: 100%; text-align: left; background: transparent; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; cursor: pointer; }
+
+/* 列印 */
+@media print {
+  .v2-root .v2-cmdbar, .v2-root .v2-mobile-header, .v2-root .v2-nav, .v2-root .no-print { display: none !important; }
+}
