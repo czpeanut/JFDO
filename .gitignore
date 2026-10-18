@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.env*.local
+.env
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# 題目池在建置時從 OLE-QS 匯出檔產生（scripts/build-bank.mjs），不進版控：repo 保持精簡、題目永遠跟 OLE-QS 最新快照一致
+data/pool/
+.cache/
