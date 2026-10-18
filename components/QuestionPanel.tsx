@@ -12,9 +12,19 @@ import AskAI from './AskAI'
 import QImages from './QImages'
 import { grade } from '@/lib/practice'
 import { addFlag, getWrongBook, saveWrong } from '@/lib/storage'
-import { ERROR_REASONS, type BankQuestion, type ErrorReason, type Response } from '@/lib/types'
+import { ERROR_REASONS, type BankQuestion, type Confidence, type ErrorReason, type Response } from '@/lib/types'
 
-export type Result = { response: Response; correct: boolean; ms: number }
+export type Result = { response: Response; correct: boolean; ms: number; confidence?: Confidence }
+
+/** 作答過快提醒門檻（快速猜題的下限，見 lib/learning-profile.ts） */
+const FAST_MS = 3000
+/** 冷靜作答：題目出現後幾秒才能送出（Meichenbaum & Goodman：重點是檢查步驟，等待只是讓學生有空檢查） */
+const CALM_SECONDS = 5
+const CONF: { c: Confidence; label: string; cls: string }[] = [
+  { c: 'sure', label: '✓ 有把握', cls: 'btn-primary' },
+  { c: 'unsure', label: '？不太確定', cls: 'btn-outline' },
+  { c: 'guess', label: '🎲 用猜的', cls: 'btn-outline' },
+]
 
 const fmtResponse = (q: BankQuestion, r: Response) =>
   r === 'skip' ? '不會' : r === 'self' ? '自己對答案' : typeof r === 'boolean' ? (r ? '○' : '╳') : r.map(n => `(${n})`).join('')
@@ -25,40 +35,59 @@ export function answerLabel(q: BankQuestion): string | null {
   return null
 }
 
-export default function QuestionPanel({ q, result, onResult, onNext, nextLabel = '下一題' }: {
+export default function QuestionPanel({ q, result, onResult, onNext, nextLabel = '下一題', calm = false }: {
   q: BankQuestion
   /** 已作答（從暫停回來、或看結果時） */
   result?: Result
   onResult: (r: Result) => void
   onNext?: () => void
   nextLabel?: string
+  /** 冷靜作答（學習習慣偵測到衝動型作答時開啟） */
+  calm?: boolean
 }) {
   const [picked, setPicked] = useState<number[]>([])
-  const [revealed, setRevealed] = useState(false)     // 看答案自評：已看答案、還沒判斷
+  const [tf, setTf] = useState<boolean | null>(null)
+  // 看答案自評：已按「對答案」（記下當時的作答時間與把握度），還沒判斷對錯
+  const [revealed, setRevealed] = useState<{ ms: number; confidence: Confidence } | null>(null)
+  const [fastWarn, setFastWarn] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   const started = useRef(Date.now())
 
-  useEffect(() => { setPicked([]); setRevealed(false); started.current = Date.now() }, [q.id])
+  useEffect(() => { setPicked([]); setTf(null); setRevealed(null); setFastWarn(false); setElapsed(0); started.current = Date.now() }, [q.id])
+  useEffect(() => {
+    if (!calm || result) return
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - started.current) / 1000)), 500)
+    return () => clearInterval(t)
+  }, [calm, result, q.id])
 
   const done = !!result
-  const submit = (response: Response, correctOverride?: boolean) => {
+  const calmWait = calm && elapsed < CALM_SECONDS
+  const finish = (response: Response, confidence: Confidence | undefined, ms: number, correctOverride?: boolean) => {
     if (done) return
-    const correct = correctOverride ?? grade(q, response) ?? false
-    onResult({ response, correct, ms: Date.now() - started.current })
+    onResult({ response, correct: correctOverride ?? grade(q, response) ?? false, ms, ...(confidence ? { confidence } : {}) })
   }
+  /** 依把握度送出（計算題＝對答案）。3 秒內送出先提醒一次（快速猜題門檻） */
+  const trySubmit = (confidence: Confidence) => {
+    const ms = Date.now() - started.current
+    if (calm && ms / 1000 < CALM_SECONDS) return
+    if (ms < FAST_MS && !fastWarn) { setFastWarn(true); return }
+    if (q.kind === 'choice') finish(picked, confidence, ms)
+    else if (q.kind === 'tf' && tf !== null) finish(tf, confidence, ms)
+    else if (q.kind === 'open') setRevealed({ ms, confidence })
+  }
+  const skip = () => finish('skip', 'guess', Date.now() - started.current)
   const toggle = (n: number) => {
     if (done) return
     setPicked(p => q.single ? [n] : p.includes(n) ? p.filter(x => x !== n) : [...p, n].sort((a, b) => a - b))
   }
+  const ready = q.kind === 'choice' ? picked.length > 0 : q.kind === 'tf' ? tf !== null : true
 
-  // 鍵盤：數字選選項、Enter 送出／下一題
+  // 鍵盤：數字選選項、Enter 下一題
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return
       if (!done && q.kind === 'choice' && /^[1-9]$/.test(e.key) && Number(e.key) <= (q.options ?? 0)) toggle(Number(e.key))
-      else if (e.key === 'Enter') {
-        if (done) onNext?.()
-        else if (q.kind === 'choice' && picked.length) submit(picked)
-      }
+      else if (e.key === 'Enter' && done) onNext?.()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -83,20 +112,19 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
                   </button>
                 ))}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button className="btn-primary" disabled={!picked.length} onClick={() => submit(picked)}>送出答案</button>
-                <button className="btn-ghost" onClick={() => submit('skip')}>不會，看詳解</button>
-              </div>
             </>
           )}
           {q.kind === 'tf' && (
             <div className="flex flex-wrap gap-2">
-              <button className="btn-outline h-12 w-20 text-xl" onClick={() => submit(true)}>○</button>
-              <button className="btn-outline h-12 w-20 text-xl" onClick={() => submit(false)}>╳</button>
-              <button className="btn-ghost" onClick={() => submit('skip')}>不會，看詳解</button>
+              {[true, false].map(v => (
+                <button key={String(v)} onClick={() => setTf(v)} aria-pressed={tf === v}
+                  className={`h-12 w-20 rounded-xl border text-xl transition ${tf === v ? 'border-brand-500 bg-brand-500 text-white' : 'border-black/10 bg-white hover:border-brand-500'}`}>{v ? '○' : '╳'}</button>
+              ))}
             </div>
           )}
-          {q.kind === 'open' && (revealed ? (
+          {q.kind === 'open' && !revealed && <div className="text-sm text-ink-soft">這題是計算／填充題：先在紙上算出答案，再依你的把握程度按下面的按鈕對答案。</div>}
+
+          {revealed ? (
             <div className="space-y-3">
               <div className="rounded-xl bg-amber-50/60 p-3">
                 {q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" /> : <div className="text-sm text-ink-soft">這題原文件只附詳解，對照下面的詳解。</div>}
@@ -104,19 +132,34 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
               </div>
               <div className="text-sm font-medium">和你算的一樣嗎？</div>
               <div className="flex flex-wrap gap-2">
-                <button className="btn-primary bg-green-600 hover:bg-green-700" onClick={() => submit('self', true)}>✓ 我答對了</button>
-                <button className="btn-primary bg-red-500 hover:bg-red-600" onClick={() => submit('self', false)}>✗ 我答錯了（含部分錯）</button>
+                <button className="btn-primary bg-green-600 hover:bg-green-700" onClick={() => finish('self', revealed.confidence, revealed.ms, true)}>✓ 我答對了</button>
+                <button className="btn-primary bg-red-500 hover:bg-red-600" onClick={() => finish('self', revealed.confidence, revealed.ms, false)}>✗ 我答錯了（含部分錯）</button>
               </div>
             </div>
           ) : (
             <>
-              <div className="text-sm text-ink-soft">這題是計算／填充題：先在紙上算出答案，再對答案。</div>
+              {calm && ready && (
+                <div className="rounded-xl bg-brand-50 px-3 py-2 text-sm">
+                  <div className="font-medium">🧘 冷靜作答：送出前檢查一下{calmWait && `（${CALM_SECONDS - elapsed} 秒）`}</div>
+                  <ol className="mt-1 list-inside list-decimal text-ink-soft">
+                    <li>題目問什麼？關鍵字（正負號、範圍、「何者錯誤」）圈了嗎？</li>
+                    <li>答案大概多少？和你算的差不多嗎？</li>
+                    <li>再對照一次題目，確定沒看錯</li>
+                  </ol>
+                </div>
+              )}
+              {fastWarn && <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">⏱ 作答很快喔，要不要再看一次題目？確定的話再按一次。</div>}
               <div className="flex flex-wrap gap-2">
-                <button className="btn-primary" onClick={() => setRevealed(true)}>算好了，對答案</button>
-                <button className="btn-ghost" onClick={() => submit('skip')}>不會，看詳解</button>
+                {CONF.map(({ c, label, cls }) => (
+                  <button key={c} className={cls} disabled={!ready || calmWait} onClick={() => trySubmit(c)}>
+                    {q.kind === 'open' ? `${label}，對答案` : label}
+                  </button>
+                ))}
+                <button className="btn-ghost" onClick={skip}>不會，看詳解</button>
               </div>
+              {q.kind !== 'open' && <div className="text-xs text-ink-muted">依你的把握程度送出：用猜的答對不太會加分，有把握卻錯會優先複習</div>}
             </>
-          ))}
+          )}
         </div>
       )}
 

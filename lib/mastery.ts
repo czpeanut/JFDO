@@ -17,12 +17,16 @@ export const expectedCorrect = (score: number, d: number | null) => 1 / (1 + Mat
 
 export const newStat = (): KPStat => ({ score: INITIAL_SCORE, attempts: 0, correct: 0, recent: [], last: 0 })
 
-/** 作答一次後更新；skipped（跳過／不會）照答錯算，但不額外加重 */
-export function updateStat(s: KPStat | undefined, correct: boolean, difficulty: number | null, now = Date.now()): KPStat {
+/**
+ * 作答一次後更新。依把握度打折（同 Self-learning-sys）：答對時不太確定 ×0.7、用猜的 ×0.3，避免猜對把分數灌高；
+ * 有把握卻答錯 ×1.2（觀念錯誤比不會更需要處理）。沒有把握度（舊紀錄）就不打折。
+ */
+export function updateStat(s: KPStat | undefined, correct: boolean, difficulty: number | null, now = Date.now(), confidence?: 'sure' | 'unsure' | 'guess'): KPStat {
   const m = s ?? newStat()
   const p = expectedCorrect(m.score, difficulty)
   const k = m.attempts < 5 ? 24 : 16          // 新知識點收斂快一點
-  const delta = correct ? k * (1 - p) : -k * p
+  const factor = correct ? (confidence === 'guess' ? 0.3 : confidence === 'unsure' ? 0.7 : 1) : confidence === 'sure' ? 1.2 : 1
+  const delta = (correct ? k * (1 - p) : -k * p) * factor
   return {
     score: Math.round(clamp(m.score + delta) * 10) / 10,
     attempts: m.attempts + 1,

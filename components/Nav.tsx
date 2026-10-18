@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { withBase } from '@/lib/base'
 import { currentProfile, dueWrong, switchProfile } from '@/lib/storage'
 
 const LINKS = [
   { href: '/', label: '知識點練習' },
   { href: '/wrong-book', label: '錯題本' },
   { href: '/progress', label: '學習進度' },
+  { href: '/habits', label: '學習習慣' },
 ]
 
 export default function Nav() {
@@ -34,7 +36,7 @@ export default function Nav() {
         })}
         {name && (
           <button className="ml-auto shrink-0 rounded-lg px-2 py-1 text-sm text-ink-soft hover:bg-black/5" title="切換學生"
-            onClick={() => { switchProfile(null); window.location.href = '/' }}>
+            onClick={() => { switchProfile(null); window.location.href = withBase('/') }}>
             👤 {name} <span className="text-xs text-ink-muted">切換</span>
           </button>
         )}

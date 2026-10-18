@@ -7,7 +7,8 @@ import QuestionPanel, { type Result } from '@/components/QuestionPanel'
 import QImages from '@/components/QImages'
 import { LevelBadge, ProgressBar, fmtPct } from '@/components/ui'
 import { leafOf, leafPath } from '@/lib/bank'
-import { getSession, getStats, recordAnswer, saveSession } from '@/lib/storage'
+import { collectProfile } from '@/lib/profile-data'
+import { getPrefs, getSession, getStats, recordAnswer, saveSession } from '@/lib/storage'
 import type { Bank, BankQuestion, Session } from '@/lib/types'
 import { useBank } from '@/lib/use-bank'
 
@@ -20,7 +21,14 @@ function Practice() {
   const router = useRouter()
   const { bank, error } = useBank()
   const [s, setS] = useState<Session | null | undefined>(undefined)
+  const [calm, setCalm] = useState(false)
   useEffect(() => { setS(getSession(id)) }, [id])
+  // 冷靜作答：設定開啟，或「自動」且學習習慣偵測到衝動型作答
+  useEffect(() => {
+    if (!bank) return
+    const pref = getPrefs().calm
+    setCalm(pref === 'on' || (pref === 'auto' && collectProfile(bank).calmMode))
+  }, [bank])
 
   const byId = useMemo(() => new Map((bank?.questions ?? []).map(q => [q.id, q])), [bank])
   if (error) return <div className="p-6 text-red-600">{error}</div>
@@ -35,12 +43,15 @@ function Practice() {
   const q = byId.get(item.qid)!
   const update = (next: Session) => { saveSession(next); setS(next) }
   const onResult = (r: Result) => {
-    recordAnswer(q, r.response, r.correct, r.ms)
-    update({ ...s, items: s.items.map(it => it.qid === q.id ? { ...it, response: r.response, correct: r.correct, ms: r.ms } : it) })
+    recordAnswer(q, r.response, r.correct, r.ms, r.confidence)
+    update({ ...s, items: s.items.map(it => it.qid === q.id ? { ...it, response: r.response, correct: r.correct, ms: r.ms, confidence: r.confidence, answeredAt: Date.now() } : it) })
   }
   const next = () => {
     const i = s.index + 1
-    update({ ...s, index: i, ...(i >= items.length ? { endedAt: Date.now() } : {}) })
+    const now = Date.now()
+    // 記下看答案與詳解多久（學習行為剖析：答錯後有沒有看詳解）；超過 10 分鐘視為離開，不記
+    const its = s.items.map(it => it.qid === item.qid && it.answeredAt && it.reviewMs == null && now - it.answeredAt < 600000 ? { ...it, reviewMs: now - it.answeredAt } : it)
+    update({ ...s, items: its, index: i, ...(i >= items.length ? { endedAt: now } : {}) })
     window.scrollTo({ top: 0 })
   }
   const answered = items.filter(it => it.correct !== undefined)
@@ -60,8 +71,8 @@ function Practice() {
       </div>
       <div className="text-xs text-ink-muted">{[p.section, p.sub, p.type].filter(Boolean).join(' › ')}<span className="ml-2 opacity-70">原文件第 {q.no} 題</span></div>
       <QuestionPanel q={q}
-        result={item.correct !== undefined && item.response !== undefined ? { response: item.response, correct: item.correct, ms: item.ms ?? 0 } : undefined}
-        onResult={onResult} onNext={next} nextLabel={s.index + 1 >= items.length ? '看結果' : '下一題'} />
+        result={item.correct !== undefined && item.response !== undefined ? { response: item.response, correct: item.correct, ms: item.ms ?? 0, confidence: item.confidence } : undefined}
+        onResult={onResult} calm={calm} onNext={next} nextLabel={s.index + 1 >= items.length ? '看結果' : '下一題'} />
     </div>
   )
 }

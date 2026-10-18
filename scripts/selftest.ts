@@ -5,6 +5,7 @@
 import fs from 'fs'
 import path from 'path'
 import { leafOf, leavesOf, progressOf, questionsByLeaf } from '../lib/bank'
+import { type AnswerEvent, buildLearningProfile } from '../lib/learning-profile'
 import { levelOf, updateStat } from '../lib/mastery'
 import { allocate } from '../lib/plan'
 import { grade, lastAttempts, pickQuestions } from '../lib/practice'
@@ -81,6 +82,37 @@ for (let i = 0; i < 8; i++) s2 = updateStat(s2, false, null, i)
 ok(levelOf(s2).key === 'weak', `連續答錯 → 待加強（${s2!.score}）`)
 const p = progressOf([leaf], { [leaf]: s! }, byLeaf, new Set([qs[0].id]))
 ok(p.total === qs.length && p.done === 1 && p.practicedLeaves === 1, '進度彙總')
+
+// 把握度打折（同 Self-learning-sys）
+const guessed = updateStat(undefined, true, null, 0, 'guess').score, sureRight = updateStat(undefined, true, null, 0, 'sure').score
+const sureWrong = updateStat(undefined, false, null, 0, 'sure').score, unsureWrong = updateStat(undefined, false, null, 0, 'unsure').score
+ok(guessed < sureRight && sureWrong < unsureWrong, `把握度：猜對加分少（${guessed} < ${sureRight}）、有把握卻錯扣更多（${sureWrong} < ${unsureWrong}）`)
+
+// ── 6. 學習行為剖析（模擬學生） ──
+const mk = (n: number, f: (i: number) => Partial<AnswerEvent>): AnswerEvent[] => Array.from({ length: n }, (_, i) => ({
+  session: `s${Math.floor(i / 10)}`, order: i % 10, day: `2026-10-${String(5 + Math.floor(i / 10)).padStart(2, '0')}`,
+  timeMs: 90000, correct: true, skipped: false, confidence: 'sure', kind: 'choice', reviewMs: 20000,
+  skill: `k${i % 4}`, skillName: `題型${i % 4}`, ...f(i),
+}))
+const base = { asks: 0, review: { overdue: 0, resolved: 0, total: 0 }, today: '2026-10-18' }
+const few = buildLearningProfile({ ...base, events: mk(5, () => ({})) })
+ok(!few.enough && few.indicators.find(x => x.id === 'tempo')?.level === 'na', '資料不足時不下判斷')
+// 衝動型：作答時間約參考時間 0.3 倍（27 秒，高於快速猜題門檻）、正確率約 40%
+const imp = buildLearningProfile({ ...base, events: mk(40, i => ({ timeMs: 27000, correct: i % 5 < 2 })) })
+ok(imp.tempo.quadrant === 'impulsive' && imp.patterns[0]?.id === 'impulsive' && imp.calmMode, `快而錯多 → 衝動型作答、開啟冷靜作答（${imp.patterns.map(x => x.name).join('、')}）`)
+ok(imp.advice.some(a => a.ref === 'meichenbaum'), '衝動型 → 建議自我檢查口訣（Meichenbaum & Goodman）')
+// 觀念缺口：k0 題型練 12 次幾乎都錯，其他都對
+const gap = buildLearningProfile({ ...base, events: mk(48, i => ({ correct: i % 4 !== 0 })) })
+ok(gap.struggling[0]?.skill === 'k0' && gap.patterns.some(x => x.id === 'gap'), `同題型練很多次仍錯 → 原地打轉、觀念缺口型（${gap.struggling.map(x => x.name).join('、')}）`)
+// 沒試就看詳解
+const giveUp = buildLearningProfile({ ...base, events: mk(30, i => (i % 2 ? { skipped: true, correct: false, timeMs: 5000, confidence: 'guess' } : {})) })
+ok(giveUp.indicators.find(x => x.id === 'help')?.level === 'concern' && giveUp.advice.some(a => a.id === 'help'), '常常沒試就按「不會」→ 求助方式需要調整')
+// 答錯後沒看詳解
+const glance = buildLearningProfile({ ...base, events: mk(40, i => (i % 3 === 0 ? { correct: false, reviewMs: 1500 } : {})) })
+ok(glance.indicators.find(x => x.id === 'help')?.display.includes('沒看詳解'), '答錯後常常沒看詳解 → 迴避求助')
+// 穩健熟練
+const fluent = buildLearningProfile({ ...base, events: mk(40, () => ({ timeMs: 30000 })) })
+ok(fluent.patterns[0]?.id === 'fluent' && !fluent.calmMode, '又快又準 → 流暢熟練')
 
 console.log(fail ? `\n${fail} 項失敗` : '\n全部通過')
 process.exit(fail ? 1 : 0)

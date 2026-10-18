@@ -6,11 +6,11 @@
 import { leafOf } from './bank'
 import { updateStat } from './mastery'
 import { isDue, recordRight, recordWrong } from './wrongbook'
-import type { AskRecord, AttemptLog, BankQuestion, FlagItem, KPStat, Response, Session, WrongItem } from './types'
+import type { AskRecord, AttemptLog, BankQuestion, Confidence, FlagItem, KPStat, Response, Session, WrongItem } from './types'
 
 const ROOT = 'jfdo'
 const MAX_ATTEMPTS = 20000
-const MAX_SESSIONS = 60
+const MAX_SESSIONS = 200
 const MAX_ASKS = 300
 
 const hasLS = () => typeof window !== 'undefined' && !!window.localStorage
@@ -47,8 +47,9 @@ export function deleteProfile(id: string) {
 const k = (name: string) => `${ROOT}:u:${currentProfileId() ?? 'guest'}:${name}`
 
 // ── 偏好 ──
-export type Prefs = { chapter: string | null; count: number; open: string[] }
-export const getPrefs = (): Prefs => ({ chapter: null, count: 10, open: [], ...read<Partial<Prefs>>(k('prefs'), {}) })
+/** calm：冷靜作答（auto＝偵測到衝動型作答時自動開啟） */
+export type Prefs = { chapter: string | null; count: number; open: string[]; calm: 'auto' | 'on' | 'off' }
+export const getPrefs = (): Prefs => ({ chapter: null, count: 10, open: [], calm: 'auto', ...read<Partial<Prefs>>(k('prefs'), {}) })
 export const setPrefs = (p: Partial<Prefs>) => write(k('prefs'), { ...getPrefs(), ...p })
 
 // ── 掌握度與作答紀錄 ──
@@ -57,10 +58,10 @@ export const getAttempts = () => read<AttemptLog[]>(k('attempts'), [])
 export const doneIdSet = () => new Set(getAttempts().map(a => a.qid))
 
 /** 作答一題：更新題型掌握度、作答紀錄、錯題本 */
-export function recordAnswer(q: BankQuestion, response: Response, correct: boolean, ms: number, now = Date.now()) {
+export function recordAnswer(q: BankQuestion, response: Response, correct: boolean, ms: number, confidence?: Confidence, now = Date.now()) {
   const leaf = leafOf(q)
   const stats = getStats()
-  stats[leaf] = updateStat(stats[leaf], correct, null, now)
+  stats[leaf] = updateStat(stats[leaf], correct, null, now, confidence)
   write(k('stats'), stats)
 
   const logs = getAttempts()
@@ -89,6 +90,7 @@ export function saveSession(s: Session) {
 }
 
 // ── 問 AI 紀錄 ──
+export const askCount = () => Object.keys(read<Record<string, AskRecord>>(k('asks'), {})).length
 export const getAsk = (qid: string) => read<Record<string, AskRecord>>(k('asks'), {})[qid] ?? null
 export function addAskTurn(qid: string, q: string, a: string): AskRecord {
   const all = read<Record<string, AskRecord>>(k('asks'), {})

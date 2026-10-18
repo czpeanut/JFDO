@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import SolutionView from './SolutionView'
+import { STATIC } from '@/lib/base'
 import { addAskTurn, getAsk } from '@/lib/storage'
 import { QUICK_DOUBTS } from '@/lib/tutor'
 import type { AskRecord } from '@/lib/types'
@@ -49,6 +50,7 @@ export default function AskAI({ qid }: { qid: string }) {
     } finally { setLoading(false) }
   }
 
+  if (STATIC) return null
   if (status && !status.ai) return <div className="text-xs text-ink-muted">🤖 問 AI 需要設定 GEMINI_API_KEY</div>
   if (!open) {
     return <button className="btn-outline w-full" disabled={!status} onClick={() => setOpen(true)}>🤖 詳解看不懂？問 AI</button>

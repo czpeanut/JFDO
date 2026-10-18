@@ -1,0 +1,42 @@
+# 推到 main 就建置靜態網頁並發佈到 GitHub Pages（gh-pages 分支）：https://czpeanut.github.io/JFDO/
+# 靜態網頁沒有伺服器：「問 AI」與整站通行碼不會啟用（要這兩項請部署到 Vercel，見 README）。
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: 建置靜態網頁
+        run: |
+          rm -rf app/api app/access middleware.ts
+          npm run build
+          touch out/.nojekyll
+        env:
+          STATIC_EXPORT: '1'
+          NEXT_PUBLIC_BASE_PATH: /JFDO
+          NEXT_PUBLIC_STATIC: '1'
+      - name: 發佈到 gh-pages 分支
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          force_orphan: true

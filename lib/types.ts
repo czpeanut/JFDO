@@ -58,7 +58,10 @@ export type WrongItem = {
   note?: string
 }
 
-export type SessionItem = { qid: string; response?: Response; correct?: boolean; ms?: number }
+export type Confidence = 'sure' | 'unsure' | 'guess'
+
+/** ms＝作答時間（計算題算到按「對答案」）；answeredAt、reviewMs＝作答後看答案與詳解多久（學習行為剖析用） */
+export type SessionItem = { qid: string; response?: Response; correct?: boolean; ms?: number; confidence?: Confidence; answeredAt?: number; reviewMs?: number }
 export type Session = {
   id: string
   mode: 'practice' | 'review'
