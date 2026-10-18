@@ -21,6 +21,10 @@ export type BankQuestion = {
   single?: boolean
   /** 從 PDF 抽出的答案文字（數學式可能失真，只當參考，畫面一律顯示答案圖） */
   answerText?: string
+  /** 正確答案（LaTeX，從答案圖轉寫，source/answers.tsv）；畫面優先顯示這個，沒有才用答案圖 */
+  answerTex?: string
+  /** 學測選填格式（scripts/build_fill.py）：有這個的計算／填充題改成填數字格、自動批改 */
+  fill?: FillSpec
   /** 原文件沒附答案也沒附詳解：不出題 */
   noAnswer?: boolean
   /** 題目、答案、詳解圖（跨頁會有好幾張） */
@@ -28,6 +32,10 @@ export type BankQuestion = {
   /** 抽出的題目文字（失真，只用來搜尋） */
   text: string
 }
+
+/** 選填的一個小題：tex＝答案式（數字位置是 \boxed{編號}）、key＝每格正確字元、groups＝不限順序的各組格子範圍（相對本小題） */
+export type FillPart = { label?: string; tex: string; key: string[]; groups?: [number, number][] }
+export type FillSpec = { parts: FillPart[] }
 
 export type Bank = { chapters: BankChapter[]; questions: BankQuestion[] }
 
@@ -37,8 +45,8 @@ export type KPStat = { score: number; attempts: number; correct: number; recent:
 
 export type AttemptLog = { qid: string; leaf: string; correct: boolean; at: number; ms: number }
 
-/** 作答內容：選項題＝選的選項；是非＝true/false；看答案自評＝'self'；不會＝'skip' */
-export type Response = number[] | boolean | 'self' | 'skip'
+/** 作答內容：選項題＝選的選項；是非＝true/false；選填＝每格填的字元；看答案自評＝'self'；不會＝'skip' */
+export type Response = number[] | string[] | boolean | 'self' | 'skip'
 
 export const ERROR_REASONS = ['觀念不熟', '計算錯誤', '看錯題目', '公式忘記', '完全不會'] as const
 export type ErrorReason = (typeof ERROR_REASONS)[number]

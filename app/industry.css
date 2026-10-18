@@ -447,8 +447,8 @@
 .v2-root .v2-result.bad { background: var(--color-accent-900); }
 .v2-root .v2-result .big { font-family: var(--font-heading); font-size: 26px; font-weight: 600; line-height: 1; }
 
-/* 題目圖：白底紙張 */
-.v2-root .v2-paper { background: #fff; padding: 16px 18px; overflow-x: auto; }
+/* 題目／詳解圖：圖已去背（文字色＋透明），直接放在頁面底色上，不加白底 */
+.v2-root .v2-paper { padding: 14px 16px; overflow-x: auto; }
 
 /* 方形勾選框 */
 .v2-root .v2-check {

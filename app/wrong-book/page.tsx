@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import AskAI from '@/components/AskAI'
 import { answerLabel } from '@/components/QuestionPanel'
 import QImages from '@/components/QImages'
+import TeX from '@/components/TeX'
 import { Corners, Empty, Sect, fmtDay } from '@/components/ui'
 import { chapterLabel, leafOf, leafPath } from '@/lib/bank'
 import { startSession } from '@/lib/session'
@@ -18,7 +19,8 @@ import { INTERVAL_DAYS, MASTER_BOX, isDue, markMastered, reviewOrder } from '@/l
 type Tab = 'due' | 'open' | 'mastered'
 const TABS: [Tab, string][] = [['due', '今天要複習'], ['open', '全部未克服'], ['mastered', '已克服']]
 
-const fmtResponse = (r: Response) => r === 'skip' ? '不會' : r === 'self' ? '自評答錯' : typeof r === 'boolean' ? (r ? '○' : '╳') : r.map(n => `(${n})`).join('')
+const fmtResponse = (r: Response) => r === 'skip' ? '不會' : r === 'self' ? '自評答錯' : typeof r === 'boolean' ? (r ? '○' : '╳')
+  : r.some(x => typeof x === 'string') ? (r as string[]).map(c => (c === '-' ? '−' : c || '□')).join(' ') : (r as number[]).map(n => `(${n})`).join('')
 
 export default function WrongBookPage() {
   const router = useRouter()
@@ -180,10 +182,11 @@ function Detail({ w, q, bank, status, onUpdate, onRemove }: {
           你上次的答案 <b style={{ color: 'var(--color-accent-900)' }}>{fmtResponse(w.response)}</b>
           {ans && <> · 正解 <b>{ans}</b></>}
         </div>
-        {q.img.a?.length ? <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div><div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}><QImages srcs={q.img.a} alt="答案" /></div></div> : null}
+        {q.answerTex ? <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div><TeX tex={q.answerTex} className="text-[17px]" /></div>
+          : q.img.a?.length ? <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div><div className="v2-paper" style={{ paddingLeft: 0 }}><QImages srcs={q.img.a} alt="答案" /></div></div> : null}
         <div>
           <div className="v2-label" style={{ marginBottom: 6 }}>SOLUTION 詳解</div>
-          <div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}>
+          <div className="v2-paper" style={{ paddingLeft: 0 }}>
             {q.img.s?.length ? <QImages srcs={q.img.s} alt="詳解" /> : <span className="v2-muted" style={{ fontSize: 13 }}>原文件沒有附詳解</span>}
           </div>
         </div>

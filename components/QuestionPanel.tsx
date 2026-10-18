@@ -10,6 +10,8 @@
 import { useEffect, useRef, useState } from 'react'
 import AskAI from './AskAI'
 import QImages from './QImages'
+import FillCard, { FillFormat, slotCount } from './FillCard'
+import TeX from './TeX'
 import { Corners } from './ui'
 import { grade } from '@/lib/practice'
 import { addFlag, getWrongBook, saveWrong } from '@/lib/storage'
@@ -28,7 +30,8 @@ const CONF: { c: Confidence; label: string; cls: string }[] = [
 ]
 
 const fmtResponse = (q: BankQuestion, r: Response) =>
-  r === 'skip' ? '不會' : r === 'self' ? '自己對答案' : typeof r === 'boolean' ? (r ? '○' : '╳') : r.map(n => `(${n})`).join('')
+  r === 'skip' ? '不會' : r === 'self' ? '自己對答案' : typeof r === 'boolean' ? (r ? '○' : '╳')
+    : q.fill ? (r as string[]).map(c => (c === '-' ? '−' : c || '□')).join(' ') : (r as number[]).map(n => `(${n})`).join('')
 
 export function answerLabel(q: BankQuestion): string | null {
   if (q.kind === 'choice' && Array.isArray(q.answer)) return q.answer.map(n => `(${n})`).join('')
@@ -48,13 +51,14 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
 }) {
   const [picked, setPicked] = useState<number[]>([])
   const [tf, setTf] = useState<boolean | null>(null)
+  const [filled, setFilled] = useState<string[]>([])
   // 看答案自評：已按「對答案」（記下當時的作答時間與把握度），還沒判斷對錯
   const [revealed, setRevealed] = useState<{ ms: number; confidence: Confidence } | null>(null)
   const [fastWarn, setFastWarn] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const started = useRef(Date.now())
 
-  useEffect(() => { setPicked([]); setTf(null); setRevealed(null); setFastWarn(false); setElapsed(0); started.current = Date.now() }, [q.id])
+  useEffect(() => { setPicked([]); setTf(null); setFilled([]); setRevealed(null); setFastWarn(false); setElapsed(0); started.current = Date.now() }, [q.id])
   useEffect(() => {
     if (!calm || result) return
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - started.current) / 1000)), 500)
@@ -74,6 +78,7 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
     if (ms < FAST_MS && !fastWarn) { setFastWarn(true); return }
     if (q.kind === 'choice') finish(picked, confidence, ms)
     else if (q.kind === 'tf' && tf !== null) finish(tf, confidence, ms)
+    else if (q.fill) finish(Array.from({ length: slotCount(q.fill) }, (_, i) => filled[i] ?? ''), confidence, ms)
     else if (q.kind === 'open') setRevealed({ ms, confidence })
   }
   const skip = () => finish('skip', 'guess', Date.now() - started.current)
@@ -81,7 +86,8 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
     if (done) return
     setPicked(p => q.single ? [n] : p.includes(n) ? p.filter(x => x !== n) : [...p, n].sort((a, b) => a - b))
   }
-  const ready = q.kind === 'choice' ? picked.length > 0 : q.kind === 'tf' ? tf !== null : true
+  const ready = q.kind === 'choice' ? picked.length > 0 : q.kind === 'tf' ? tf !== null
+    : q.fill ? Array.from({ length: slotCount(q.fill) }, (_, i) => filled[i]).every(Boolean) : true
 
   // 鍵盤：數字選選項、Enter 下一題
   useEffect(() => {
@@ -132,7 +138,8 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
               </div>
             </>
           )}
-          {q.kind === 'open' && !revealed && (
+          {q.fill && <FillCard fill={q.fill} filled={filled} onChange={setFilled} />}
+          {q.kind === 'open' && !q.fill && !revealed && (
             <p className="v2-muted" style={{ fontSize: 13 }}>計算／填充題：先在紙上算出答案，再依你的把握程度按下面的按鈕對答案。</p>
           )}
 
@@ -140,7 +147,7 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
             <div className="flex flex-col" style={{ gap: 12 }}>
               <div className="v2-label">ANSWER 答案</div>
               <div className="blueprint v2-paper">
-                {q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" /> : <><div className="v2-muted" style={{ fontSize: 13, marginBottom: 6 }}>這題原文件只附詳解，對照詳解：</div><QImages srcs={q.img.s} alt="詳解" /></>}
+                {q.answerTex ? <TeX tex={q.answerTex} className="text-[17px]" /> : q.img.a?.length ? <QImages srcs={q.img.a} alt="答案" /> : <><div className="v2-muted" style={{ fontSize: 13, marginBottom: 6 }}>這題原文件只附詳解，對照詳解：</div><QImages srcs={q.img.s} alt="詳解" /></>}
                 <Corners />
               </div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>和你算的一樣嗎？</div>
@@ -165,12 +172,12 @@ export default function QuestionPanel({ q, result, onResult, onNext, nextLabel =
               <div className="flex flex-wrap" style={{ gap: 8 }}>
                 {CONF.map(({ c, label, cls }) => (
                   <button key={c} className={cls} style={{ flex: '1 1 120px' }} disabled={!ready || calmWait} onClick={() => trySubmit(c)}>
-                    {q.kind === 'open' ? `${label}，對答案` : label}
+                    {q.kind === 'open' && !q.fill ? `${label}，對答案` : label}
                   </button>
                 ))}
                 <button className="v2-btn" style={{ flex: '1 1 120px', color: 'rgba(29,31,32,.6)' }} onClick={skip}>不會，看詳解</button>
               </div>
-              {q.kind !== 'open' && <div className="v2-mono v2-muted" style={{ fontSize: 10 }}>依把握程度送出：用猜的答對不太會加分，有把握卻錯會優先複習</div>}
+              {(q.kind !== 'open' || q.fill) && <div className="v2-mono v2-muted" style={{ fontSize: 10 }}>依把握程度送出：用猜的答對不太會加分，有把握卻錯會優先複習</div>}
             </>
           )}
         </div>
@@ -187,15 +194,23 @@ function Review({ q, result, onNext, nextLabel }: { q: BankQuestion; result: Res
     <div className="flex flex-col" style={{ gap: 16 }}>
       <div className={`v2-result ${result.correct ? 'ok' : 'bad'}`} style={{ margin: '0 -22px' }}>
         <span className="big">{result.correct ? '✓ 答對了' : '✗ 答錯了'}</span>
-        {q.kind !== 'open' && <span style={{ fontSize: 13, opacity: 0.9 }}>你的答案 {fmtResponse(q, result.response)}</span>}
+        {(q.kind !== 'open' || (q.fill && result.response !== 'skip')) && <span style={{ fontSize: 13, opacity: 0.9 }}>你的答案 {fmtResponse(q, result.response)}</span>}
         {ans && <span style={{ fontSize: 13 }}>正解 <b>{ans}</b></span>}
         {!result.correct && <span className="v2-mono" style={{ marginLeft: 'auto', opacity: 0.85 }}>已收進錯題本・明天複習</span>}
       </div>
-      {q.img.a?.length ? (
-        <div>
-          <div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div>
-          <div className="v2-paper" style={{ border: '1px solid var(--color-divider)' }}><QImages srcs={q.img.a} alt="答案" /></div>
+      {q.fill ? (
+        <div className="grid" style={{ gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          {Array.isArray(result.response) && result.response.length > 0 && (
+            <div><div className="v2-label" style={{ marginBottom: 6 }}>YOURS 你的答案</div>
+              <FillFormat fill={q.fill} filled={(result.response as string[]).map(c => c || undefined)} /></div>
+          )}
+          <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 正確答案</div>
+            <FillFormat fill={q.fill} filled={q.fill.parts.flatMap(p => p.key)} /></div>
         </div>
+      ) : q.answerTex ? (
+        <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div><TeX tex={q.answerTex} className="text-[17px]" /></div>
+      ) : q.img.a?.length ? (
+        <div><div className="v2-label" style={{ marginBottom: 6 }}>ANSWER 答案</div><QImages srcs={q.img.a} alt="答案" /></div>
       ) : null}
 
       {!result.correct && <ErrorNote qid={q.id} />}
