@@ -5,10 +5,8 @@ const staticExport = process.env.STATIC_EXPORT === '1'
 const nextConfig = staticExport
   ? { output: 'export', basePath: process.env.NEXT_PUBLIC_BASE_PATH || '', trailingSlash: true }
   : {
-      experimental: {
-        // 問 AI 會在伺服器端讀題庫索引與圖片，部署時要一起打包進 API 函式
-        outputFileTracingIncludes: { '/api/ask': ['./public/bank/**/*'] },
-      },
+      // 問 AI 會在伺服器端讀題庫索引與圖片，部署時要一起打包進 API 函式
+      outputFileTracingIncludes: { '/api/ask': ['./public/bank/**/*'] },
     }
 
 export default nextConfig
