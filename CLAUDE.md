@@ -14,6 +14,7 @@
 - 資料層：畫面一律讀寫 `lib/storage.ts`（localStorage，依學生切換命名空間）；作答的副作用集中在 `recordAnswer`
 - 學習行為剖析（`/habits`，說明在 `docs/LEARNING-PROFILE.md`）：`lib/learning-profile.ts` 移植自 Self-learning-sys（純函式，指標門檻都有研究出處，改了要同步更新文件）、`lib/profile-data.ts`（從練習紀錄組資料）；作答收集把握度、作答時間、看詳解時間（`SessionItem`）；冷靜作答在 `components/QuestionPanel.tsx`。用語只描述作答方式，不給人格／能力標籤
 - 部署：GitHub Pages（`.github/workflows/pages.yml`，推 `main` 自動發佈，靜態網頁，`STATIC_EXPORT=1`、basePath `/JFDO`，建置時移除 `app/api`、`middleware.ts`）；自己組的網址要用 `lib/base.ts` 的 `withBase`。Vercel 可完整部署（含問 AI）
+- App（PWA，說明在 `docs/APP.md`）：`app/manifest.ts`、`public/sw.js`（改版時 `VERSION` 加一）、`lib/offline.ts`（離線題庫，與 sw 共用快取 `jfdo-bank`）、`components/InstallApp.tsx`；網址都要帶部署路徑
 - 問 AI：`/api/ask` 把題目、答案、詳解圖送 Gemini（`lib/tutor.ts` 提示詞），圖片路徑只從題庫索引取、不接受前端傳入
 - `lib/gemini.ts`、`components/SolutionView.tsx`、`components/GeometryFigure.tsx`、`components/MathText.tsx` 是 student-app 的逐字快照，不要單邊修改
 - OLE-QS、Self-learning-sys、student-app 只作參考，不要修改或推送

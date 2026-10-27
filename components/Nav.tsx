@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import InstallApp, { InstallPopup } from './InstallApp'
 import { withBase } from '@/lib/base'
 import { currentProfile, dueWrong, switchProfile } from '@/lib/storage'
 
@@ -62,6 +63,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span className="flex items-center justify-center" style={{ width: 26, height: 26, background: 'var(--color-accent)', color: '#fff', fontFamily: 'var(--font-heading)', fontSize: 13 }}>{initial}</span>
             <span style={{ fontSize: 14 }}>{name}</span>
           </span>
+          <InstallApp />
           <button onClick={signOut} className="v2-mono" style={plainBtn} title="切換學生">切換學生</button>
         </div>
       </header>
@@ -74,12 +76,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div style={{ fontSize: 15, fontWeight: 500 }} className="truncate">{name}</div>
           <div className="v2-mono v2-muted" style={{ fontSize: 10, letterSpacing: '0.08em' }}>JFDO 題庫練習</div>
         </div>
-        <button onClick={signOut} className="v2-mono ml-auto" style={plainBtn}>切換學生</button>
+        <span className="ml-auto flex items-center" style={{ gap: 12 }}>
+          <InstallApp />
+          <button onClick={signOut} className="v2-mono" style={plainBtn}>切換學生</button>
+        </span>
       </header>
 
       <main className="flex-1 min-w-0" style={{ paddingBottom: 'max(1.5rem, calc(var(--bottom-nav-h, 0px) + 1rem))' }}>
         {children}
       </main>
+
+      <InstallPopup />
 
       {/* 手機：底部導航 */}
       <nav ref={navRef} className="v2-nav fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>

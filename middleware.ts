@@ -20,6 +20,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // 不攔：靜態檔、輸入通行碼的頁面與 API
-  matcher: ['/((?!_next/|favicon|access|api/access).*)'],
+  // 不攔：靜態檔、PWA 檔案（圖示、manifest、Service Worker，否則無法安裝）、輸入通行碼的頁面與 API
+  matcher: ['/((?!_next/|favicon|icons/|manifest.webmanifest|sw.js|access|api/access).*)'],
 }
