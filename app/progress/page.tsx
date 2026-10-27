@@ -12,6 +12,9 @@ import { startSession } from '@/lib/session'
 import { doneIdSet, exportData, getAttempts, getFlags, getSessions, getStats, importData, removeFlag } from '@/lib/storage'
 import type { AttemptLog, FlagItem, KPStat, Session } from '@/lib/types'
 import { useBank } from '@/lib/use-bank'
+import InstallApp from '@/components/InstallApp'
+import { bankUrls, cachedCount, clearOffline, downloadAll, offlineSupported } from '@/lib/offline'
+import type { Bank } from '@/lib/types'
 
 const DAY = 86400000
 
@@ -163,6 +166,10 @@ export default function ProgressPage() {
             </>
           )}
 
+          <Sect label="APP & OFFLINE" title="App 與離線使用" sub="安裝到主畫面後，下載題庫就能在沒有網路時練習（紀錄一樣存在這台裝置）。" />
+          <InstallApp variant="block" />
+          <OfflineSection bank={bank} />
+
           <Sect label="BACKUP" title="備份" sub="紀錄存在這台裝置的瀏覽器；換裝置或清除瀏覽器資料前，先匯出備份。" />
           <div className="flex" style={{ gap: 8, padding: '0 22px 22px' }}>
             <button className="v2-btn v2-btn-sm" onClick={download}>匯出備份</button>
@@ -170,6 +177,53 @@ export default function ProgressPage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** 離線題庫：下載全部題目圖（約 17 MB）到瀏覽器快取，Service Worker 斷線時從這裡取 */
+function OfflineSection({ bank }: { bank: Bank }) {
+  const urls = useMemo(() => bankUrls(bank), [bank])
+  const [supported, setSupported] = useState(true)
+  const [have, setHave] = useState<number | null>(null)
+  const [busy, setBusy] = useState<{ done: number; total: number } | null>(null)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    if (!offlineSupported()) { setSupported(false); return }
+    cachedCount(urls).then(setHave).catch(() => setHave(0))
+  }, [urls])
+
+  if (!supported) return <Empty>這個瀏覽器不支援離線儲存（需要 HTTPS 與較新的瀏覽器）。</Empty>
+  const total = urls.length
+  const pct = busy ? Math.round((busy.done / busy.total) * 100) : have != null ? Math.round((have / total) * 100) : 0
+  const start = async () => {
+    setMsg(''); setBusy({ done: 0, total })
+    try {
+      const failed = await downloadAll(urls, (done, t) => setBusy({ done, total: t }))
+      setHave(await cachedCount(urls))
+      setMsg(failed ? `有 ${failed} 個檔案下載失敗，網路穩定後再按一次即可補齊。` : '題庫已全部下載，沒有網路也能練習。')
+    } catch { setMsg('下載失敗，請確認網路後再試一次。') }
+    setBusy(null)
+  }
+  const clear = async () => {
+    if (!confirm('刪除已下載的離線題庫？（練習紀錄不受影響）')) return
+    await clearOffline(); setHave(0); setMsg('已刪除離線題庫。')
+  }
+  return (
+    <div className="flex flex-col" style={{ gap: 10, padding: '0 22px 18px' }}>
+      <div className="flex items-center" style={{ gap: 10 }}>
+        <div className="v2-bar" style={{ height: 7, flex: 1 }}>
+          <div className="seg-review" style={{ flexGrow: pct }} /><div className="seg-empty" style={{ flexGrow: 100 - pct }} />
+        </div>
+        <span className="v2-mono v2-muted">{busy ? `${busy.done}/${busy.total}` : have == null ? '…' : `${have}/${total}`}</span>
+      </div>
+      <div className="flex flex-wrap" style={{ gap: 8 }}>
+        <button className="v2-btn v2-btn-primary v2-btn-sm" disabled={!!busy || have === total} onClick={start}>
+          {busy ? `下載中 ${pct}%` : have === total ? '✓ 題庫已可離線使用' : have ? '補齊離線題庫' : '下載題庫供離線使用（約 17 MB）'}
+        </button>
+        {!!have && !busy && <button className="v2-btn v2-btn-sm" onClick={clear}>刪除離線題庫</button>}
+      </div>
+      {msg && <p className="v2-muted" style={{ fontSize: 12, margin: 0 }}>{msg}</p>}
     </div>
   )
 }
