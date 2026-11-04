@@ -15,7 +15,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "katex": "^0.18.2",
-    "next": "15.5.27",
+    "next": "15.5.28",
     "react": "^19",
     "react-dom": "^19"
   },
